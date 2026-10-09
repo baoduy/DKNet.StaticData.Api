@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DKNet StaticData \u2014 Runtime Architecture (design revision 1)",
+    "output": "runtime.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Calling service",
+      "sublabel": "API or app backend",
+      "pos": [
+        20,
+        296
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "idp",
+      "type": "security",
+      "label": "OIDC issuer",
+      "sublabel": "Entra ID; Keycloak locally",
+      "pos": [
+        20,
+        100
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "edge",
+      "type": "backend",
+      "label": "API edge",
+      "sublabel": "JWT, scope or role, owner",
+      "pos": [
+        280,
+        296
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": ":8080"
+    },
+    {
+      "id": "files",
+      "type": "backend",
+      "label": "Files endpoints",
+      "sublabel": "upload, metadata, download",
+      "pos": [
+        560,
+        296
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "groups",
+      "type": "backend",
+      "label": "File group endpoints",
+      "sublabel": "create, link, delete",
+      "pos": [
+        560,
+        436
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "settings",
+      "type": "backend",
+      "label": "UI settings endpoints",
+      "sublabel": "settings, setting groups",
+      "pos": [
+        280,
+        576
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "blob",
+      "type": "backend",
+      "label": "Blob adapter",
+      "sublabel": "DKNet.Svc.BlobStorage",
+      "pos": [
+        850,
+        100
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "data",
+      "type": "backend",
+      "label": "EF Core + owner filter",
+      "sublabel": "DataAuthorization, idempotency",
+      "pos": [
+        850,
+        436
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "store",
+      "type": "cloud",
+      "label": "Blob storage",
+      "sublabel": "Local, Azure Storage or S3",
+      "pos": [
+        1130,
+        100
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "Postgres or SQL Server",
+      "pos": [
+        1130,
+        436
+      ],
+      "size": [
+        170,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "DKNet.StaticData container (per replica)",
+      "wraps": [
+        "edge",
+        "files",
+        "groups",
+        "settings",
+        "blob",
+        "data"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Service edge: bearer token required",
+      "wraps": [
+        "edge"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Data stores: secret credentials, TLS",
+      "wraps": [
+        "store",
+        "db"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "caller-token",
+      "from": "caller",
+      "to": "idp",
+      "label": "client credentials",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "caller-call",
+      "from": "caller",
+      "to": "edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-keys",
+      "from": "edge",
+      "to": "idp",
+      "label": "signing keys",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "right"
+    },
+    {
+      "id": "edge-files",
+      "from": "edge",
+      "to": "files",
+      "label": "files.*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-groups",
+      "from": "edge",
+      "to": "groups",
+      "label": "files.*",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-settings",
+      "from": "edge",
+      "to": "settings",
+      "label": "settings.*",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "files-blob",
+      "from": "files",
+      "to": "blob",
+      "label": "stream bytes",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "blob-store",
+      "from": "blob",
+      "to": "store",
+      "label": "provider SDK",
+      "variant": "emphasis"
+    },
+    {
+      "id": "files-data",
+      "from": "files",
+      "to": "data",
+      "label": "metadata",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "groups-data",
+      "from": "groups",
+      "to": "data",
+      "label": "groups"
+    },
+    {
+      "id": "settings-data",
+      "from": "settings",
+      "to": "data",
+      "label": "settings",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "data-db",
+      "from": "data",
+      "to": "db",
+      "label": "SQL",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Security",
+      "items": [
+        "Bearer token from client credentials only; no browser calls",
+        "Scope or app role: files.read, files.write, settings.read, settings.write",
+        "Owner travels as the owner query parameter; the owner filter fails closed"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Files",
+      "items": [
+        "Max 50,000,000 bytes per file; extension allow-list",
+        "Bytes stream to and from storage; no download links",
+        "X-Idempotency-Key on POST /v1/files and /v1/file-groups"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Configuration",
+      "items": [
+        "Database:Provider = Postgres (default) or SqlServer",
+        "One blob provider per deployment: Local, AzureStorage or AwsS3",
+        "GET /healthz anonymous; /healthz/detail needs a token"
+      ]
+    }
+  ]
+}

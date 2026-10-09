@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DKNet StaticData \u2014 Context Map (design revision 1)",
+    "output": "context-map.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser",
+      "sublabel": "React app UI",
+      "pos": [
+        20,
+        240
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "appbe",
+      "type": "external",
+      "label": "React app backend",
+      "sublabel": "own login for users",
+      "pos": [
+        250,
+        240
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "svc",
+      "type": "external",
+      "label": "Backend services",
+      "sublabel": "APIs",
+      "pos": [
+        250,
+        420
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "sd",
+      "type": "backend",
+      "label": "DKNet StaticData",
+      "sublabel": "files + UI settings, /v1",
+      "pos": [
+        530,
+        240
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "tag": ":8080"
+    },
+    {
+      "id": "idp",
+      "type": "security",
+      "label": "OIDC issuer",
+      "sublabel": "Entra ID; Keycloak locally",
+      "pos": [
+        540,
+        60
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "Postgres or SQL Server",
+      "pos": [
+        860,
+        150
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "store",
+      "type": "cloud",
+      "label": "Blob storage",
+      "sublabel": "Local, Azure Storage or S3",
+      "pos": [
+        860,
+        330
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "pkgs",
+      "type": "external",
+      "label": "DKNet packages",
+      "sublabel": "NuGet, build time",
+      "pos": [
+        460,
+        440
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "tpl",
+      "type": "external",
+      "label": "DKNet.Templates",
+      "sublabel": "dknet-minimal, once",
+      "pos": [
+        680,
+        440
+      ],
+      "size": [
+        170,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Machine-to-machine callers only",
+      "wraps": [
+        "appbe",
+        "svc"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-appbe",
+      "from": "browser",
+      "to": "appbe",
+      "label": "HTTPS"
+    },
+    {
+      "id": "appbe-sd",
+      "from": "appbe",
+      "to": "sd",
+      "label": "HTTPS, M2M token",
+      "variant": "emphasis"
+    },
+    {
+      "id": "svc-sd",
+      "from": "svc",
+      "to": "sd",
+      "label": "HTTPS, M2M token",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "sd-idp",
+      "from": "sd",
+      "to": "idp",
+      "label": "signing keys",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "sd-db",
+      "from": "sd",
+      "to": "db",
+      "label": "SQL",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "sd-store",
+      "from": "sd",
+      "to": "store",
+      "label": "stream bytes",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "sd-pkgs",
+      "from": "sd",
+      "to": "pkgs",
+      "label": "references",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "sd-tpl",
+      "from": "sd",
+      "to": "tpl",
+      "label": "scaffolded from",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Callers",
+      "items": [
+        "Backend services and React app backends, with client-credentials tokens",
+        "A browser never calls StaticData; it calls its own app backend",
+        "Every call names the owner"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "No runtime link",
+      "items": [
+        "StaticData calls no other DKNet service",
+        "DKNet.Accounts.Api is the reference for stack and layout only"
+      ]
+    }
+  ]
+}
