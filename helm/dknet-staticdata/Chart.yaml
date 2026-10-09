@@ -1,0 +1,12 @@
+apiVersion: v2
+name: dknet-staticdata
+description: Internal DKNet.StaticData API built on drunk-app.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: drunk-app
+    version: 2.0.2
+    repository: oci://ghcr.io/baoduy
+    alias: api
+    condition: api.enabled
