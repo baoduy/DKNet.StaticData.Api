@@ -6,7 +6,7 @@
 
 | Boundary | What crosses it | Control |
 |---|---|---|
-| Caller → service edge | HTTPS calls from backend services | Bearer token validated against the OIDC issuer; permission checked per route |
+| Caller → service edge | HTTPS calls from backend services | Bearer token validated against the OIDC issuer; no permission check (ADR-0013) |
 | Service → database | SQL | Credentials from the deployment's secrets; TLS to the server |
 | Service → blob storage | File bytes | Provider credentials from the deployment's secrets; TLS for Azure Storage and S3 |
 | Browser → this service | Nothing | Browsers never reach the service. The Helm chart exposes it in the cluster only; its HTTP route is off by default, as in DKNet.Accounts.Api's chart |
@@ -17,18 +17,17 @@
 - The scaffold's demonstration sign-in (`EnableDemoAuthentication`) stays off in every deployment.
 - Tokens come from client credentials only. A user sign-in token is not a supported caller.
 - The issuer, audience and metadata address are settings (`Authentication:Schemes:Bearer:*`). Entra ID in a deployment; the local Keycloak under the AppHost.
-- The caller id is the first of the token's `client_id`, `azp` or `appid` claims. A valid token with none of them answers 401 (ADR-0006).
+- The caller id is the first of the token's `client_id`, `azp` or `appid` claims. A valid token with none of them answers 401 (ADR-0013).
+- Each deployment turns on "Assignment required" for this API's app in Entra ID. Only the calling apps the operator assigns get a token. By default, Entra ID gives an app-only token to any app in the tenant.
+- The local Keycloak defines no scopes for this service.
 
 ### Authorization
 
-- 4 permissions, each accepted as a scope (`scp` or `scope`) or an app role (`roles`) (ADR-0006):
-  - `files.read` — file and file group reads, and download.
-  - `files.write` — upload, link, delete; file group create, update, delete.
-  - `settings.read` — UI setting and setting group reads.
-  - `settings.write` — UI setting and setting group create, update, delete.
-- A missing permission answers 403.
-- `/healthz` is anonymous and reports status only. `/healthz/detail` needs any valid token.
-- **The owner is a partition, not a permission.** A caller with a permission can reach any owner's data by naming that owner. The service trusts its callers to name only owners they serve. This follows the requester's decision that every owner comes from the caller (ADR-0005).
+- Authentication only (ADR-0013). Any caller with a valid token may call every `/v1` route.
+- No scope or app-role check. No route answers 403 for a missing permission.
+- A caller that holds a token can read and delete every owner's files and settings. The requester accepted this risk.
+- `/healthz` and `/healthz/detail` are anonymous (ADR-0015).
+- **The owner is a partition, not a permission.** A caller with a valid token can reach any owner's data by naming that owner. The service trusts its callers to name only owners they serve. This follows the requester's decision that every owner comes from the caller (ADR-0005).
 - No route uses cookies, so no route needs an antiforgery token. `EnableAntiforgery` stays off, and the upload route turns off the antiforgery check ASP.NET Core adds to form-file routes.
 - Within one call, the owner filter is strict. It is not ignorable and denies all rows when no owner is set.
 
@@ -65,7 +64,7 @@ No secret is in `appsettings.json`, an image or a log.
 ### Health
 
 - `/healthz` answers healthy, degraded or unhealthy, with no detail. It is anonymous, for the container probes.
-- `/healthz/detail` gives the per-check report to a caller with a valid token.
+- `/healthz/detail` gives the per-check report: each check's name, status, duration and failure message. It is anonymous too (ADR-0015). A database failure message can be read without a token; the requester accepted this risk.
 - Checks: the database. No blob storage check in version 1: a storage outage shows as 503 on file routes and in error logs.
 
 ### Logs
@@ -118,7 +117,7 @@ An operator finds orphaned bytes by the warning's storage key and removes them i
 - **Helm chart:** `dknet-staticdata`, built on the drunk-app chart like DKNet.Accounts.Api's. It sets `Database:Provider`, `BlobStorage:Provider`, the provider settings, the allow-list and `RequireAuthorization`. Its HTTP route is off by default.
 - **Local folder provider:** for development and single-replica use only. With more than 1 replica, use Azure Storage or S3, or a volume every replica shares.
 - **Migrations:** each database has its own migrations. They run as the scaffold runs them: at start when `RunDbMigrationWhenAppStart` is on.
-- **No NuGet package** ships in version 1.
+- **Client package:** `DKNet.StaticData.Client`, packed and pushed to GitHub Packages by the publish workflow on `main`, with the image's release version (ADR-0014). Slice 2 adds it and its pack and push step.
 
 ## Testing approach
 
@@ -135,19 +134,19 @@ Integration tests run against real infrastructure (Policy 02):
 | File name with non-ASCII characters in `Content-Disposition` | Local provider | Real headers |
 | Failed insert after stored bytes deletes the bytes | Local provider, database made to fail | The cleanup path |
 
-- The OIDC issuer is faked: a test signing key and test tokens with a scope or an app role, and with and without a caller claim.
+- The OIDC issuer is faked: a test signing key and test tokens with and without a caller claim. A token with no scope and no app role is accepted on every `/v1` route.
 - The Azure Storage and S3 adapters are not tested again here. DKNet's own Svc.BlobStorage tests cover them.
 
 ## Runtime architecture
 
 The planned runtime shape. The first docs ticket after the scaffold draws the code-derived diagram at `docs/diagrams/` and reports any difference from this one as a design question.
 
-![A calling service gets a token from the OIDC issuer with client credentials and calls the API edge over HTTPS; the edge checks the bearer token, the scope or app role and the owner, then hands the call to the files, file group or UI settings endpoints inside the per-replica container; the files endpoints stream bytes through the DKNet blob adapter to the one blob storage provider of the deployment, and every endpoint group reads and writes metadata through EF Core with the owner filter to the Postgres or SQL Server database.](diagrams/runtime.svg)
+![A calling service gets a token from the OIDC issuer with client credentials and calls the API edge over HTTPS; the edge checks the bearer token, the caller id and the owner, then hands the call to the files, file group or UI settings endpoints inside the per-replica container; the files endpoints stream bytes through the DKNet blob adapter to the one blob storage provider of the deployment, and every endpoint group reads and writes metadata through EF Core with the owner filter to the Postgres or SQL Server database.](diagrams/runtime.svg)
 
 Supporting detail:
 
 - **Ports:** the container listens on 8080 over HTTP. TLS ends before the pod.
-- **Auth:** bearer token from client credentials; scope or app role `files.read`, `files.write`, `settings.read`, `settings.write`; caller id from `client_id`, `azp` or `appid`.
+- **Auth:** bearer token from client credentials; no scope or app-role check; caller id from `client_id`, `azp` or `appid`; both health routes anonymous.
 - **Owner:** the `owner` query parameter on every `/v1` route; the DKNet owner filter fails closed.
 - **Configuration:** `Database:Provider` = `Postgres` (default) or `SqlServer`; `BlobStorage:Provider` = `Local`, `AzureStorage` or `AwsS3`; `Files:AllowedExtensions`.
 - **Limits:** 50,000,000 bytes per file; 51,000,000-byte body and 300-second timeout on upload; 65,536 bytes per setting value.

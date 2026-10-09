@@ -1,0 +1,23 @@
+# ADR-0014: A typed client package, DKNet.StaticData.Client
+
+- **Status:** Accepted
+- **Context:**
+  - Revision 1 shipped no client package and expected a later revision to add one.
+  - The requester decided on 2026-10-09 (DRK-2187) that the service ships a typed client package.
+  - DKNet.Accounts.Api ships `DKNet.Accounts.Client` the same way: its publish workflow on `main` packs it and pushes it to GitHub Packages.
+  - Slice 1 has no `/v1` route, so there is nothing for a client to call before slice 2.
+- **Decision:**
+  - The package is `DKNet.StaticData.Client`, its own published package.
+  - It offers one typed call per `/v1` route, and none for the health routes.
+  - It never gets, keeps or logs a credential. The consuming app attaches its own bearer token.
+  - It carries only the public contract: request and answer shapes, the `owner`, `X-Idempotency-Key` and `If-Match` inputs, and errors as problem details. It holds no server code.
+  - Slice 2 adds the package with the file routes, and devops adds its pack and push to the publish workflow on `main`. Slices 3 and 4 add their routes to it.
+  - The publish workflow sets its version from the release tags, the same version as the image.
+- **Alternatives:**
+  - *No client package; callers write their own HTTP calls.* Rejected by the requester.
+  - *Ship the client from slice 1.* Rejected: slice 1 has no `/v1` route to call.
+  - *Publish to NuGet.org.* Not chosen: the neighbour client packages are on GitHub Packages, and consumers already read that feed.
+- **Consequences:**
+  - Easier: callers get typed calls and typed errors; the route list stays in one place.
+  - Harder: every slice that adds or changes a `/v1` route updates the client in the same slice.
+  - Harder: consumers need a GitHub token with `read:packages` to restore the package.

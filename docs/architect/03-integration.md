@@ -11,17 +11,18 @@
 | Blob storage (Local folder, Azure Storage or AWS S3, one per deployment) | This service → storage | Through the DKNet.Svc.BlobStorage packages, in process |
 | DKNet packages (DKNet repo) | This service → packages | NuGet package references, in process |
 | DKNet.Templates | One time, at scaffold | `dotnet new dknet-minimal`; no runtime link |
-| DKNet.Accounts.Api | None at runtime | The reference for stack, layout, CI and Helm chart; nothing is shared at build time |
+| DKNet.Accounts.Api | None at runtime | The reference for stack, layout, CI, Helm chart and client package; nothing is shared at build time |
+| `DKNet.StaticData.Client` (GitHub Packages) | Caller → package | A caller may reference the typed client package this repo publishes (ADR-0014) |
 
-This service calls no other DKNet service at runtime. No DKNet service is a build-time dependency. No other repo references this repo.
+This service calls no other DKNet service at runtime. No DKNet service is a build-time dependency. Other repos may reference only the published client package, never the service.
 
-![Backend services and React app backends call DKNet StaticData over HTTPS with a client-credentials token from the OIDC issuer, browsers never call it directly, and StaticData keeps metadata in Postgres or SQL Server and bytes in one blob storage provider, with DKNet packages referenced at build time and DKNet.Templates used once at scaffold.](diagrams/context-map.svg)
+![Backend services and React app backends call DKNet StaticData over HTTPS with a client-credentials token from the OIDC issuer, browsers never call it directly, and StaticData keeps metadata in Postgres or SQL Server and bytes in one blob storage provider, with DKNet packages referenced at build time, DKNet.Templates used once at scaffold, and backend services free to reference the published DKNet.StaticData.Client package.](diagrams/context-map.svg)
 
 ## Exposed API
 
 ### Rules for every `/v1` route
 
-- `Authorization: Bearer <token>` is required. The token needs the route's permission as a scope or an app role (ADR-0006).
+- `Authorization: Bearer <token>` is required: a valid token for this API, with a caller id. No scope or app role is checked, and no route answers 403 for a missing permission (ADR-0013).
 - The `owner` query parameter is required: 1 to 255 characters, not only white space, no control characters. It is URL-encoded, so any other character is allowed (ADR-0005).
 - The owner is never trimmed or case-folded. It compares exactly.
 - A record of another owner answers 404, the same as a record that does not exist.
@@ -37,31 +38,42 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 
 | Verb | Path | Purpose | Auth |
 |---|---|---|---|
-| POST | `/v1/files` | Upload one file. | `files.write` |
-| GET | `/v1/files` | List the owner's files; optional `groupId` filter. | `files.read` |
-| GET | `/v1/files/{fileId}` | Read one file's metadata. | `files.read` |
-| GET | `/v1/files/{fileId}/content` | Stream one file's bytes. | `files.read` |
-| PUT | `/v1/files/{fileId}/group` | Link the file to a group, or unlink it. | `files.write` |
-| DELETE | `/v1/files/{fileId}` | Delete the file's metadata and bytes. | `files.write` |
-| POST | `/v1/file-groups` | Create a file group. | `files.write` |
-| GET | `/v1/file-groups` | List the owner's file groups; optional `purpose` and `externalRef` filters, exact match. | `files.read` |
-| GET | `/v1/file-groups/{groupId}` | Read one file group. | `files.read` |
-| PUT | `/v1/file-groups/{groupId}` | Change name, purpose or external reference. | `files.write` |
-| DELETE | `/v1/file-groups/{groupId}` | Delete an empty file group. | `files.write` |
-| POST | `/v1/ui-settings` | Create one UI setting. | `settings.write` |
-| GET | `/v1/ui-settings` | List the owner's settings; optional `appKey`, `settingKey` and `groupId` filters, exact match. | `settings.read` |
-| GET | `/v1/ui-settings/{settingId}` | Read one UI setting. | `settings.read` |
-| PUT | `/v1/ui-settings/{settingId}` | Replace a setting's type, group, value and schema version. | `settings.write` |
-| DELETE | `/v1/ui-settings/{settingId}` | Delete one UI setting. | `settings.write` |
-| POST | `/v1/ui-setting-groups` | Create a setting group. | `settings.write` |
-| GET | `/v1/ui-setting-groups` | List the owner's setting groups; optional `appKey` filter. | `settings.read` |
-| GET | `/v1/ui-setting-groups/{groupId}` | Read one setting group. | `settings.read` |
-| PUT | `/v1/ui-setting-groups/{groupId}` | Change name or description. | `settings.write` |
-| DELETE | `/v1/ui-setting-groups/{groupId}` | Delete an empty setting group. | `settings.write` |
+| POST | `/v1/files` | Upload one file. | Bearer token |
+| GET | `/v1/files` | List the owner's files; optional `groupId` filter. | Bearer token |
+| GET | `/v1/files/{fileId}` | Read one file's metadata. | Bearer token |
+| GET | `/v1/files/{fileId}/content` | Stream one file's bytes. | Bearer token |
+| PUT | `/v1/files/{fileId}/group` | Link the file to a group, or unlink it. | Bearer token |
+| DELETE | `/v1/files/{fileId}` | Delete the file's metadata and bytes. | Bearer token |
+| POST | `/v1/file-groups` | Create a file group. | Bearer token |
+| GET | `/v1/file-groups` | List the owner's file groups; optional `purpose` and `externalRef` filters, exact match. | Bearer token |
+| GET | `/v1/file-groups/{groupId}` | Read one file group. | Bearer token |
+| PUT | `/v1/file-groups/{groupId}` | Change name, purpose or external reference. | Bearer token |
+| DELETE | `/v1/file-groups/{groupId}` | Delete an empty file group. | Bearer token |
+| POST | `/v1/ui-settings` | Create one UI setting. | Bearer token |
+| GET | `/v1/ui-settings` | List the owner's settings; optional `appKey`, `settingKey` and `groupId` filters, exact match. | Bearer token |
+| GET | `/v1/ui-settings/{settingId}` | Read one UI setting. | Bearer token |
+| PUT | `/v1/ui-settings/{settingId}` | Replace a setting's type, group, value and schema version. | Bearer token |
+| DELETE | `/v1/ui-settings/{settingId}` | Delete one UI setting. | Bearer token |
+| POST | `/v1/ui-setting-groups` | Create a setting group. | Bearer token |
+| GET | `/v1/ui-setting-groups` | List the owner's setting groups; optional `appKey` filter. | Bearer token |
+| GET | `/v1/ui-setting-groups/{groupId}` | Read one setting group. | Bearer token |
+| PUT | `/v1/ui-setting-groups/{groupId}` | Change name or description. | Bearer token |
+| DELETE | `/v1/ui-setting-groups/{groupId}` | Delete an empty setting group. | Bearer token |
 | GET | `/healthz` | Liveness and readiness: status only. | Anonymous |
-| GET | `/healthz/detail` | Per-check health report. | Any valid token |
+| GET | `/healthz/detail` | Per-check health report. | Anonymous (ADR-0015) |
 
 The scaffold's OpenAPI and Scalar pages stay behind its `EnableSwagger` flag, which is off by default.
+
+### Typed client: `DKNet.StaticData.Client`
+
+- A .NET package, published to GitHub Packages by the publish workflow on `main` (ADR-0014).
+- One typed call per `/v1` route. No call for `/healthz` or `/healthz/detail`.
+- Every call takes the `owner`. Upload and file group create take the `X-Idempotency-Key`. Every update takes the `version` it sends as `If-Match`.
+- An error answer becomes a typed error with the status code and the problem details.
+- It never gets, keeps or logs a credential. The consuming app attaches its own bearer token.
+- It holds the public contract only, and no server code.
+- Coverage grows by slice: file routes in slice 2, file group routes in slice 3, UI settings routes in slice 4. Each slice updates it with its routes.
+- Restoring it needs a GitHub token with `read:packages`.
 
 ### `POST /v1/files?owner=<owner>`
 
@@ -85,7 +97,7 @@ The request body limit on this route is 51,000,000 bytes: the 50,000,000-byte fi
 
 Checks, in order. The first failure answers and nothing is stored:
 
-1. Token and permission — 401 or 403.
+1. Token and caller id — 401.
 2. `owner` — 400.
 3. `X-Idempotency-Key` missing, or not 1 to 255 letters, digits, `-` and `_` — 400. A repeat of a key this caller used for this owner on this route (ADR-0012):
    - after the first upload answered 2xx, within 4 hours: replays the first answer — the same status (201) and the same JSON body, with no `Location` and no `ETag`. Nothing is stored. The caller takes `version` from the body.
@@ -230,7 +242,7 @@ Failure paths:
 - The insert fails in step 5: the service deletes the stored bytes, best effort, and answers 503 or 500. If that delete fails too, it logs a warning with the file id and the storage key. Those bytes are orphaned and no caller can reach them.
 - The caller retries with the same key: while the first upload runs, 409; once it answered 201, the first status and body again, with no `Location` or `ETag`. No second file is stored.
 
-![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the permission, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
+![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the token, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
 
 ### Flow 2 — Download a file
 

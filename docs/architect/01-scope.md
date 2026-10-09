@@ -14,7 +14,7 @@
 |---|---|---|
 | Backend services | Calling system | Call the API with a machine-to-machine token (client credentials). Upload, read and delete files; create and delete file groups; save and read UI settings. Every call names the owner. |
 | React app backends | Calling system | Call the API for their browser app, with their own machine-to-machine token. The browser never calls this service. |
-| Operators | Human | Deploy the service, pick the database and the blob storage provider, set the file type allow-list, and read logs and metrics. |
+| Operators | Human | Deploy the service, pick the database and the blob storage provider, set the file type allow-list, and read logs and metrics. In Microsoft Entra ID, turn on "Assignment required" for this API's app and assign each calling app (ADR-0013). |
 | End users | Human | Use the calling apps. They never call this service and never hold a token for it. |
 
 ## Responsibilities
@@ -33,13 +33,14 @@
 - Delete a file's metadata and bytes together when the caller deletes the file.
 - Log every file upload, download and delete, without personal data.
 - Delete expired idempotency records every hour. The DKNet stores never delete them.
+- Ship the typed client package `DKNet.StaticData.Client`, with one call per `/v1` route (ADR-0014).
 
 ## Non-goals
 
 | The service never… | Who does it instead |
 |---|---|
 | Decides who the owner is, or derives an owner from the token | The calling service, which names the owner on every call |
-| Checks whether an end user may see an owner's data | The calling service. This service trusts every caller that holds the permission (05-quality, Authorization) |
+| Checks whether an end user may see an owner's data | The calling service. This service trusts every caller that holds a valid token (05-quality, Authorization) |
 | Accepts calls from a browser or a user sign-in token | The React app's own backend calls on the browser's behalf |
 | Hands out download links (pre-signed or SAS URLs) | No one; bytes always stream through the API (ADR-0004) |
 | Keeps file versions or replaces a file's bytes | No one in version 1; the caller uploads a new file and deletes the old one |
@@ -54,7 +55,6 @@
 | Implements idempotency | DKNet.AspCore.Idempotency and its Postgres and SQL Server stores in the DKNet repo |
 | Issues tokens or manages identities | The OIDC issuer: Microsoft Entra ID, or the local Keycloak under the AppHost |
 | Runs the blob store or the database server | The storage provider and the database server of the deployment |
-| Ships a typed client package | No one in version 1; a later design revision may add one, as DKNet.Notification.Api did |
 | Owns customer, account or ledger data | DKNet.Accounts.Api |
 
 ## Boundaries
@@ -64,7 +64,7 @@
 | DKNet.Templates | It gives the starting solution shape. This service owns everything after the scaffold. |
 | DKNet (packages) | The packages give blob access, the owner filter, idempotency, list paging and audit fields. This service owns the file, group and setting rules. |
 | DKNet.Accounts.Api | The reference service for stack, layout and deployment. It owns accounts and ledger data. No runtime call in either direction in version 1. |
-| Calling services | A caller decides the owner and who may see it. This service keeps the data under that owner. |
-| OIDC issuer | The issuer signs caller tokens. This service validates them and checks the permission. |
+| Calling services | A caller decides the owner and who may see it. This service keeps the data under that owner. A caller may call through `DKNet.StaticData.Client`. |
+| OIDC issuer | The issuer signs caller tokens and decides which apps get one. This service validates the token and reads the caller id. |
 | Blob storage provider | The provider stores the bytes, encrypts them at rest and may scan them. This service decides the storage key and streams the bytes. |
 | Database server | The server stores the rows. This service owns its schema and migrations. |

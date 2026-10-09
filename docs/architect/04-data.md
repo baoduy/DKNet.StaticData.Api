@@ -42,7 +42,7 @@ Every entity also has the 4 DKNet audit fields:
 | `UpdatedBy` | string | 255 | No | — | null | Stamped at each update. |
 | `UpdatedOn` | date-time with offset | — | No | — | null | Stamped at each update. |
 
-The caller id is the token's `client_id`, `azp` or `appid` claim (ADR-0006). It is never the owner.
+The caller id is the token's `client_id`, `azp` or `appid` claim (ADR-0013). It is never the owner.
 
 ### StoredFile
 

@@ -9,8 +9,7 @@
 | Term | Meaning | Not to be confused with |
 |---|---|---|
 | Owner | Free text of 1 to 255 characters that the caller names on every call. Every record belongs to exactly one owner. It is often a user id or a customer id. | The caller. One caller works for many owners. |
-| Caller | The backend system that sent the request, known by its token's `client_id`, `azp` or `appid` claim (ADR-0006). | The owner, or the end user of the caller's app. |
-| Permission | One of `files.read`, `files.write`, `settings.read`, `settings.write`, carried in the token as a scope or an app role. | The owner. A permission says what a caller may do, never whose data. |
+| Caller | The backend system that sent the request, known by its token's `client_id`, `azp` or `appid` claim (ADR-0013). | The owner, or the end user of the caller's app. |
 | File | One stored document: its metadata in the database and its bytes in blob storage. The aggregate is `StoredFile`. | A file group. |
 | Stored bytes | The content of a file in blob storage. They never change after upload. | The file's metadata. |
 | Storage key | The name of the bytes in blob storage: `files/<file id><extension>`. Internal; never returned to a caller. | The file name. |
@@ -21,7 +20,7 @@
 | Purpose | Free text that says what a file group is for, for example `customer-onboarding`. | The group's name. |
 | External reference | Free text that ties a file group to a record elsewhere, for example a customer id. | The owner. |
 | UI setting | One saved layout of one screen of one app, for one owner. | A named view. Version 1 has none. |
-| App key | The UI app a setting belongs to, for example `backoffice-web`. | A permission or a client id. |
+| App key | The UI app a setting belongs to, for example `backoffice-web`. | A client id. |
 | Setting key | The screen or component a setting belongs to, for example `customers.list.table`. | The setting's id. |
 | Setting type | Tells the UI how to read the value, for example `TableLayout`, `Filter` or `Theme`. The service does not check it against a list. | The content type of a file. |
 | Value | The setting's content: one JSON document of at most 65,536 UTF-8 bytes. The service keeps it exactly as sent and never reads inside it. | The setting's metadata. |
