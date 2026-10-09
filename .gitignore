@@ -95,3 +95,6 @@ ui/StrykerOutput/
 ui/.stryker-tmp/
 ui/next-env.d.ts
 ui/*.tsbuildinfo
+
+# AppHost local blob folder
+.data/

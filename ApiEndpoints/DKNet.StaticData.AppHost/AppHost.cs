@@ -1,42 +1,29 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using DKNet.StaticData.AppHost.SampleData;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
-var cache = builder.AddRedis("Redis");
-var postgres = builder.AddPostgres("Postgres");
+// The database the API runs on: "Postgres" (default) or "SqlServer". Switch it here, or per run with
+// `--Database:Provider SqlServer` (or the Database__Provider environment variable).
+var database = builder.Configuration["Database:Provider"] ?? "Postgres";
+var useSqlServer = string.Equals(database, "SqlServer", StringComparison.OrdinalIgnoreCase);
 
-var apDb = postgres
-    .AddDatabase("AppDb");
+IResourceBuilder<IResourceWithConnectionString> apDb = useSqlServer
+    ? builder.AddSqlServer("SqlServer").AddDatabase("AppDb")
+    : builder.AddPostgres("Postgres").AddDatabase("AppDb");
+
+// Uploaded files go to a local folder next to this AppHost (git-ignored), so no storage account is needed.
+var blobFolder = Directory.CreateDirectory(Path.Combine(builder.AppHostDirectory, ".data", "blobs")).FullName;
 
 // The (name, projectPath) overload takes a plain path string, which survives sourceName
 // substitution as text — unlike AddProject<DKNet.StaticData_Api>, whose generated Projects.* identifier
 // (derived from the .csproj file name with '.'/'-' replaced by '_') can disagree with the
 // template engine's own text substitution for a name containing a dot (e.g. "DKNet.Accounts").
-builder.AddProject("Api", "../DKNet.StaticData.Api/DKNet.StaticData.Api.csproj")
-    .WithReference(cache, "Redis")
+var api = builder.AddProject("Api", "../DKNet.StaticData.Api/DKNet.StaticData.Api.csproj")
     .WithReference(apDb, "AppDb")
-
-    //.WaitFor(bus)
-    .WaitFor(cache)
+    .WithEnvironment("BlobStorage__Provider", "Local")
+    .WithEnvironment("BlobStorage__LocalFolder__RootFolder", blobFolder)
     .WaitFor(apDb);
-
-var recordsPerEntity = builder.Configuration.GetValue("SampleData:RecordsPerEntity", 10000);
-
-builder.Eventing.Subscribe<AfterResourcesCreatedEvent>(async (@event, cancellationToken) =>
+if (useSqlServer)
 {
-    var logger = @event.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SampleDataGenerator");
-
-    var connectionString = await apDb.Resource.ConnectionStringExpression.GetValueAsync(cancellationToken);
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        logger.LogWarning("Sample-data generation skipped: no connection string was resolved for the AppDb resource.");
-        return;
-    }
-
-    await SampleDataGenerator.RunAsync(connectionString, recordsPerEntity, logger, cancellationToken);
-});
+    api.WithEnvironment("Database__Provider", "SqlServer");
+}
 
 await builder.Build().RunAsync();
