@@ -1,3 +1,4 @@
+using System.Data.Common;
 using HealthChecks.UI.Client;
 using DKNet.StaticData.Infra.Contexts;
 
@@ -6,6 +7,16 @@ namespace DKNet.StaticData.Api.Configs.Healthz;
 [ExcludeFromCodeCoverage]
 internal static class HealthzConfig
 {
+    #region Fields
+
+    /// <summary>
+    ///     Seconds the database check waits to connect and to run its query. SqlClient's own connect timeout is
+    ///     15 s, which would hold a probe of a stopped SQL Server for all of that.
+    /// </summary>
+    private const int PingTimeoutSeconds = 5;
+
+    #endregion
+
     #region Methods
 
     public static IServiceCollection AddHealthzConfig(this IServiceCollection services, FeatureOptions features)
@@ -55,31 +66,32 @@ internal static class HealthzConfig
         };
         endpoints.MapHealthChecks("/healthz/detail", detailOptions).AllowAnonymous();
 
-        endpoints.Logger.LogInformation("{Feature} enabled", nameof(HealthzConfig));
+        endpoints.Logger.LogInformation(nameof(HealthzConfig) + " enabled");
 
         return endpoints;
     }
 
     /// <summary>
-    ///     Runs one round trip on a raw connection, outside EF Core's retrying execution strategy, so a stopped
-    ///     database fails the check at once and its exception reaches the report. A pooled connection alone is no
-    ///     proof: opening one does not touch the server.
+    ///     Runs one round trip on its own connection, outside EF Core's retrying execution strategy, so a stopped
+    ///     database fails the check within <see cref="PingTimeoutSeconds" /> and its exception reaches the report.
+    ///     A pooled connection alone is no proof: opening one does not touch the server. "Timeout" is the connect
+    ///     timeout keyword both Npgsql and SqlClient accept.
     /// </summary>
     private static async Task<bool> PingDatabaseAsync(CoreDbContext db, CancellationToken cancellationToken)
     {
-        var connection = db.Database.GetDbConnection();
+        var factory = DbProviderFactories.GetFactory(db.Database.GetDbConnection())!;
+        var settings = factory.CreateConnectionStringBuilder()!;
+        settings.ConnectionString = db.Database.GetConnectionString();
+        settings["Timeout"] = PingTimeoutSeconds;
+
+        await using var connection = factory.CreateConnection()!;
+        connection.ConnectionString = settings.ConnectionString;
         await connection.OpenAsync(cancellationToken);
-        try
-        {
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT 1";
-            await command.ExecuteScalarAsync(cancellationToken);
-            return true;
-        }
-        finally
-        {
-            await connection.CloseAsync();
-        }
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1";
+        command.CommandTimeout = PingTimeoutSeconds;
+        await command.ExecuteScalarAsync(cancellationToken);
+        return true;
     }
 
     private static Task WriteStatusOnlyResponse(HttpContext context, HealthReport report)

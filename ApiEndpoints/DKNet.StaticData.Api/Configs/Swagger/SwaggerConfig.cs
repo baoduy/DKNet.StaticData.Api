@@ -41,7 +41,7 @@ internal static class SwaggerConfig
             docs.RequireAuthorization();
         }
 
-        app.Logger.LogInformation("{Feature} enabled", nameof(SwaggerConfig));
+        app.Logger.LogInformation(nameof(SwaggerConfig) + " enabled");
         return app;
     }
 
