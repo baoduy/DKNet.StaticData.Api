@@ -1,0 +1,66 @@
+# Secret content belongs to the deployment's secret store, never Helm values.
+global: {}
+api:
+  enabled: true
+  nameOverride: staticdata-api
+  global:
+    image: ghcr.io/baoduy/dknet.staticdata-api
+    tag: latest
+    imagePullPolicy: IfNotPresent
+  deployment:
+    enabled: true
+    replicaCount: 1
+    ports:
+      http: 8080
+    liveness: /healthz
+    readiness: /healthz
+  service:
+    type: ClusterIP
+  configMap:
+    ASPNETCORE_ENVIRONMENT: Production
+    ASPNETCORE_HTTP_PORTS: "8080"
+    Database__Provider: Postgres
+    FeatureManagement__RequireAuthorization: "true"
+    FeatureManagement__EnableDemoAuthentication: "false"
+    FeatureManagement__EnableHealthCheck: "true"
+    FeatureManagement__EnableHttps: "false"
+    FeatureManagement__EnableAzureAppConfig: "false"
+    FeatureManagement__RunDbMigrationWhenAppStart: "true"
+    Authentication__Schemes__Bearer__MetadataAddress: https://login.microsoftonline.com/REPLACE-ME-TENANT/v2.0/.well-known/openid-configuration
+    Authentication__Schemes__Bearer__ValidAudiences__0: api://REPLACE-ME-CLIENT
+    Authentication__Schemes__Bearer__ValidIssuer: https://sts.windows.net/REPLACE-ME-TENANT/
+  # Required existing Secret in the release namespace. Its AppDb key uses .NET's env naming.
+  secretFrom:
+    - staticdata-database
+  secretProvider:
+    enabled: false
+  serviceAccount:
+    enabled: false
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1654
+    runAsGroup: 1654
+    fsGroup: 1654
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  volumes:
+    tmp:
+      mountPath: /tmp
+      emptyDir: true
+      readOnly: false
+  httpRoute:
+    enabled: false
+    parentRefs: []
+    hostnames: []

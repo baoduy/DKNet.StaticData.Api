@@ -1,0 +1,27 @@
+suite: API configuration contract
+templates:
+  - charts/api/templates/configMap.yaml
+tests:
+  - it: enables token checks, disables demonstration authentication and selects Postgres
+    asserts:
+      - equal:
+          path: data.Database__Provider
+          value: Postgres
+      - equal:
+          path: data.FeatureManagement__RequireAuthorization
+          value: "true"
+      - equal:
+          path: data.FeatureManagement__EnableDemoAuthentication
+          value: "false"
+      - equal:
+          path: data.FeatureManagement__EnableHealthCheck
+          value: "true"
+      - notExists:
+          path: data.ConnectionStrings__AppDb
+  - it: accepts SQL Server
+    set:
+      api.configMap.Database__Provider: SqlServer
+    asserts:
+      - equal:
+          path: data.Database__Provider
+          value: SqlServer

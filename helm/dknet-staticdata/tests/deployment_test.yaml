@@ -1,0 +1,40 @@
+suite: API deployment contract
+templates:
+  - charts/api/templates/deployment.yaml
+tests:
+  - it: runs with status probes and existing database Secret
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: staticdata-database
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+  - it: accepts another deployment-managed Secret
+    set:
+      api.secretFrom: [other-database]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: other-database
+  - it: can disable the API deployment
+    set:
+      api.deployment.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

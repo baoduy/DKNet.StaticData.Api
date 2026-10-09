@@ -1,0 +1,6 @@
+dependencies:
+- name: drunk-app
+  repository: oci://ghcr.io/baoduy
+  version: 2.0.2
+digest: sha256:cc4e75713c54c82ef03fd929ad670d8a4f1c7e695452712826c00cca3d449b0f
+generated: "2026-10-09T20:06:07.069375+08:00"
