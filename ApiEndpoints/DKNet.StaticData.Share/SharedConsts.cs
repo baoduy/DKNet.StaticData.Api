@@ -16,6 +16,11 @@ public static class SharedConsts
     public static string AzureBusConnectionString => "AzureBus";
 
     /// <summary>
+    ///     Gets the configuration key of the operator's database choice (<see cref="DatabaseProvider" />).
+    /// </summary>
+    public static string DatabaseProviderKey => "Database:Provider";
+
+    /// <summary>
     ///     Gets the connection string name for the application database.
     /// </summary>
     public static string DbConnectionString => "AppDb";
