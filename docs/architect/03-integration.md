@@ -77,13 +77,15 @@ Form parts:
 
 Any other part answers 400.
 
+The route needs no antiforgery token. Callers send a bearer token and never a cookie, so the route turns off the antiforgery check that ASP.NET Core adds to form-file routes. The scaffold's `EnableAntiforgery` flag stays off.
+
 The request body limit on this route is 51,000,000 bytes: the 50,000,000-byte file plus room for the form. The request timeout on this route is 300 seconds.
 
 Checks, in order. The first failure answers and nothing is stored:
 
 1. Token and permission — 401 or 403.
 2. `owner` — 400.
-3. `X-Idempotency-Key` missing — 400. A repeat of a key this caller used on this route in the last 4 hours replays the first answer and stores nothing.
+3. `X-Idempotency-Key` missing — 400. A repeat of a key this caller used for this owner on this route in the last 4 hours replays the first answer and stores nothing.
 4. Content type — 415.
 5. Exactly 1 `file` part and no unknown part — 400.
 6. File name: 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.

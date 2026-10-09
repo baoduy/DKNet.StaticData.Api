@@ -29,6 +29,7 @@
 - A missing permission answers 403.
 - `/healthz` is anonymous and reports status only. `/healthz/detail` needs any valid token.
 - **The owner is a partition, not a permission.** A caller with a permission can reach any owner's data by naming that owner. The service trusts its callers to name only owners they serve. This follows the requester's decision that every owner comes from the caller (ADR-0005).
+- No route uses cookies, so no route needs an antiforgery token. `EnableAntiforgery` stays off, and the upload route turns off the antiforgery check ASP.NET Core adds to form-file routes.
 - Within one call, the owner filter is strict. It is not ignorable and denies all rows when no owner is set.
 
 ### Content safety
@@ -53,7 +54,7 @@
 
 | Secret | Used for | Where it lives |
 |---|---|---|
-| Database connection string | Postgres or SQL Server | The deployment's secret store, mounted through the Helm chart as DKNet.Accounts.Api does |
+| Database connection string | Postgres or SQL Server | The deployment's secret store, passed to the pod through the Helm chart's secret settings. The Key Vault mount used by DKNet.Accounts.Api's chart has a known gap with workload identity, so slice 1 picks and proves the mount |
 | Azure Storage connection string | Provider `AzureStorage` | The same secret store |
 | S3 access key and secret | Provider `AwsS3` | The same secret store |
 
@@ -146,4 +147,4 @@ Supporting detail:
 - **Owner:** the `owner` query parameter on every `/v1` route; the DKNet owner filter fails closed.
 - **Configuration:** `Database:Provider` = `Postgres` (default) or `SqlServer`; `BlobStorage:Provider` = `Local`, `AzureStorage` or `AwsS3`; `Files:AllowedExtensions`.
 - **Limits:** 50,000,000 bytes per file; 51,000,000-byte body and 300-second timeout on upload; 65,536 bytes per setting value.
-- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, kept 4 hours in the service's database.
+- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, scoped by caller and owner, kept 4 hours in the service's database.

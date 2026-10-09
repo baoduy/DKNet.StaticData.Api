@@ -112,7 +112,7 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 
 ### IdempotencyRecord (shape owned by DKNet.AspCore.Idempotency)
 
-- One record per caller, route and key, kept for 4 hours, the package default.
+- One record per caller, owner, route and key, kept for 4 hours, the package default.
 - It holds the first answer's status and body: file or group metadata. The body holds the owner and the file name, which are personal data.
 - The package creates and migrates its own tables.
 

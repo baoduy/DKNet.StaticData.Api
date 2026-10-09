@@ -82,7 +82,7 @@
       "from": "files",
       "to": "db",
       "y": 230,
-      "label": "key seen? (caller, route, key)"
+      "label": "key seen? (caller, owner, route, key)"
     },
     {
       "id": "idem-ok",
