@@ -16,7 +16,7 @@
 
 This service calls no other DKNet service at runtime. No DKNet service is a build-time dependency. Other repos may reference only the published client package, never the service.
 
-![Backend services and React app backends call DKNet StaticData over HTTPS with a client-credentials token from the OIDC issuer, browsers never call it directly, and StaticData keeps metadata in Postgres or SQL Server and bytes in one blob storage provider, with DKNet packages referenced at build time and DKNet.Templates used once at scaffold.](diagrams/context-map.svg)
+![Backend services and React app backends call DKNet StaticData over HTTPS with a client-credentials token from the OIDC issuer, browsers never call it directly, and StaticData keeps metadata in Postgres or SQL Server and bytes in one blob storage provider, with DKNet packages referenced at build time, DKNet.Templates used once at scaffold, and backend services free to reference the published DKNet.StaticData.Client package.](diagrams/context-map.svg)
 
 ## Exposed API
 

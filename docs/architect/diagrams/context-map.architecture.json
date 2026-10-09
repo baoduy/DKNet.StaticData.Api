@@ -133,6 +133,20 @@
         170,
         64
       ]
+    },
+    {
+      "id": "client",
+      "type": "external",
+      "label": "DKNet.StaticData.Client",
+      "sublabel": "published here, GitHub Packages",
+      "pos": [
+        250,
+        580
+      ],
+      "size": [
+        170,
+        64
+      ]
     }
   ],
   "boundaries": [
@@ -207,6 +221,15 @@
       "from": "sd",
       "to": "tpl",
       "label": "scaffolded from",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "svc-client",
+      "from": "svc",
+      "to": "client",
+      "label": "may reference",
       "variant": "dashed",
       "fromSide": "bottom",
       "toSide": "top"
