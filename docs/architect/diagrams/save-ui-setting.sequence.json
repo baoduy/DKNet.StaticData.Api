@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Flow 5 \u2014 Save a UI layout",
+    "output": "save-ui-setting.html",
+    "viewBox": [
+      1060,
+      670
+    ],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "be",
+      "type": "external",
+      "label": "App backend",
+      "sublabel": "settings.read + write"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "StaticData API",
+      "sublabel": "/v1/ui-settings"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "owner filter, unique key"
+    }
+  ],
+  "segments": [
+    {
+      "from": 152,
+      "to": 288,
+      "label": "Read"
+    },
+    {
+      "from": 300,
+      "to": 402,
+      "label": "No setting: create"
+    },
+    {
+      "from": 414,
+      "to": 550,
+      "label": "Setting exists: update"
+    }
+  ],
+  "messages": [
+    {
+      "id": "read",
+      "from": "be",
+      "to": "api",
+      "y": 170,
+      "label": "GET ?owner&appKey&settingKey",
+      "variant": "emphasis"
+    },
+    {
+      "id": "select",
+      "from": "api",
+      "to": "db",
+      "y": 204,
+      "label": "read for this owner"
+    },
+    {
+      "id": "rows",
+      "from": "db",
+      "to": "api",
+      "y": 238,
+      "label": "0 or 1 setting",
+      "variant": "return"
+    },
+    {
+      "id": "page",
+      "from": "api",
+      "to": "be",
+      "y": 272,
+      "label": "200 page + version",
+      "variant": "return"
+    },
+    {
+      "id": "post",
+      "from": "be",
+      "to": "api",
+      "y": 318,
+      "label": "POST /v1/ui-settings",
+      "variant": "emphasis"
+    },
+    {
+      "id": "insert",
+      "from": "api",
+      "to": "db",
+      "y": 352,
+      "label": "INSERT, Version 1"
+    },
+    {
+      "id": "created",
+      "from": "api",
+      "to": "be",
+      "y": 386,
+      "label": "201 ETag \"1\"; 409 if raced",
+      "variant": "return"
+    },
+    {
+      "id": "put",
+      "from": "be",
+      "to": "api",
+      "y": 432,
+      "label": "PUT /v1/ui-settings/{id}, If-Match \"n\"",
+      "variant": "emphasis"
+    },
+    {
+      "id": "update",
+      "from": "api",
+      "to": "db",
+      "y": 466,
+      "label": "UPDATE where Version = n"
+    },
+    {
+      "id": "count",
+      "from": "db",
+      "to": "api",
+      "y": 500,
+      "label": "1 row, or 0 rows",
+      "variant": "return"
+    },
+    {
+      "id": "updated",
+      "from": "api",
+      "to": "be",
+      "y": 534,
+      "label": "200 ETag \"n+1\"; 412 if stale",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 164,
+      "to": 540,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 198,
+      "to": 506,
+      "type": "database"
+    }
+  ]
+}

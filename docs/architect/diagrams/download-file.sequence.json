@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Flow 2 \u2014 Download a file",
+    "output": "download-file.html",
+    "viewBox": [
+      1060,
+      556
+    ],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Calling service",
+      "sublabel": "M2M token"
+    },
+    {
+      "id": "edge",
+      "type": "security",
+      "label": "API edge",
+      "sublabel": "JWT, files.read"
+    },
+    {
+      "id": "files",
+      "type": "backend",
+      "label": "Files endpoint",
+      "sublabel": "GET .../content"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "owner filter"
+    },
+    {
+      "id": "blob",
+      "type": "cloud",
+      "label": "Blob storage",
+      "sublabel": "DKNet.Svc.BlobStorage"
+    }
+  ],
+  "segments": [
+    {
+      "from": 152,
+      "to": 322,
+      "label": "Find"
+    },
+    {
+      "from": 334,
+      "to": 436,
+      "label": "Stream"
+    }
+  ],
+  "messages": [
+    {
+      "id": "get",
+      "from": "caller",
+      "to": "edge",
+      "y": 170,
+      "label": "GET /v1/files/{id}/content?owner",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth",
+      "from": "edge",
+      "to": "files",
+      "y": 204,
+      "label": "token, permission, owner ok",
+      "variant": "security"
+    },
+    {
+      "id": "select",
+      "from": "files",
+      "to": "db",
+      "y": 238,
+      "label": "read StoredFile for this owner"
+    },
+    {
+      "id": "row",
+      "from": "db",
+      "to": "files",
+      "y": 272,
+      "label": "row, or none",
+      "variant": "return"
+    },
+    {
+      "id": "notfound",
+      "from": "files",
+      "to": "caller",
+      "y": 306,
+      "label": "404 when none",
+      "variant": "return"
+    },
+    {
+      "id": "open",
+      "from": "files",
+      "to": "blob",
+      "y": 352,
+      "label": "OpenReadAsync(storage key)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stream",
+      "from": "blob",
+      "to": "files",
+      "y": 386,
+      "label": "read stream (null if missing: 500)",
+      "variant": "return"
+    },
+    {
+      "id": "ok",
+      "from": "files",
+      "to": "caller",
+      "y": 420,
+      "label": "200 stream, Content-Type, Content-Disposition",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "edge",
+      "from": 164,
+      "to": 210,
+      "type": "security"
+    },
+    {
+      "participant": "files",
+      "from": 198,
+      "to": 426,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 232,
+      "to": 278,
+      "type": "database"
+    },
+    {
+      "participant": "blob",
+      "from": 346,
+      "to": 392,
+      "type": "cloud"
+    }
+  ]
+}

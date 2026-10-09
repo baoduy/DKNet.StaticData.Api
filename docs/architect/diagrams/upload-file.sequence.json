@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Flow 1 \u2014 Upload a file",
+    "output": "upload-file.html",
+    "viewBox": [
+      1060,
+      658
+    ],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Calling service",
+      "sublabel": "M2M token"
+    },
+    {
+      "id": "edge",
+      "type": "security",
+      "label": "API edge",
+      "sublabel": "JWT, files.write"
+    },
+    {
+      "id": "files",
+      "type": "backend",
+      "label": "Files endpoint",
+      "sublabel": "POST /v1/files"
+    },
+    {
+      "id": "blob",
+      "type": "cloud",
+      "label": "Blob storage",
+      "sublabel": "DKNet.Svc.BlobStorage"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "owner filter, idempotency"
+    }
+  ],
+  "segments": [
+    {
+      "from": 154,
+      "to": 274,
+      "label": "Checks 1 to 8: token, owner, key, form, name, size"
+    },
+    {
+      "from": 280,
+      "to": 460,
+      "label": "Store"
+    },
+    {
+      "from": 466,
+      "to": 556,
+      "label": "Insert fails"
+    }
+  ],
+  "messages": [
+    {
+      "id": "post",
+      "from": "caller",
+      "to": "edge",
+      "y": 170,
+      "label": "POST /v1/files?owner + X-Idempotency-Key",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth",
+      "from": "edge",
+      "to": "files",
+      "y": 200,
+      "label": "token, permission, owner ok",
+      "variant": "security"
+    },
+    {
+      "id": "idem",
+      "from": "files",
+      "to": "db",
+      "y": 230,
+      "label": "key seen? (caller, route, key)"
+    },
+    {
+      "id": "idem-ok",
+      "from": "db",
+      "to": "files",
+      "y": 260,
+      "label": "new key",
+      "variant": "return"
+    },
+    {
+      "id": "save",
+      "from": "files",
+      "to": "blob",
+      "y": 296,
+      "label": "SaveAsync files/<id><ext>, hash SHA-256",
+      "variant": "emphasis"
+    },
+    {
+      "id": "saved",
+      "from": "blob",
+      "to": "files",
+      "y": 326,
+      "label": "stored",
+      "variant": "return"
+    },
+    {
+      "id": "insert",
+      "from": "files",
+      "to": "db",
+      "y": 356,
+      "label": "INSERT StoredFile, Version 1",
+      "variant": "emphasis"
+    },
+    {
+      "id": "committed",
+      "from": "db",
+      "to": "files",
+      "y": 386,
+      "label": "committed",
+      "variant": "return"
+    },
+    {
+      "id": "keep",
+      "from": "files",
+      "to": "db",
+      "y": 416,
+      "label": "keep answer 4 h",
+      "variant": "dashed"
+    },
+    {
+      "id": "created",
+      "from": "files",
+      "to": "caller",
+      "y": 446,
+      "label": "201 + ETag + metadata",
+      "variant": "return"
+    },
+    {
+      "id": "insert-error",
+      "from": "db",
+      "to": "files",
+      "y": 482,
+      "label": "insert error",
+      "variant": "return"
+    },
+    {
+      "id": "cleanup",
+      "from": "files",
+      "to": "blob",
+      "y": 512,
+      "label": "DeleteAsync (best effort)",
+      "variant": "dashed"
+    },
+    {
+      "id": "error",
+      "from": "files",
+      "to": "caller",
+      "y": 542,
+      "label": "503 or 500, no metadata kept",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "edge",
+      "from": 164,
+      "to": 206,
+      "type": "security"
+    },
+    {
+      "participant": "files",
+      "from": 194,
+      "to": 548,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 224,
+      "to": 422,
+      "type": "database"
+    },
+    {
+      "participant": "blob",
+      "from": 290,
+      "to": 332,
+      "type": "cloud"
+    }
+  ]
+}

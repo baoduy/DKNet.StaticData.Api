@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DKNet StaticData \u2014 Domain Model (design revision 1)",
+    "output": "domain-model.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "bytes",
+      "type": "cloud",
+      "label": "Stored bytes",
+      "sublabel": "files/<FileId><ext>",
+      "pos": [
+        20,
+        100
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "file",
+      "type": "backend",
+      "label": "StoredFile",
+      "sublabel": "FileName, ContentType, SizeBytes, Checksum",
+      "pos": [
+        300,
+        100
+      ],
+      "size": [
+        250,
+        64
+      ]
+    },
+    {
+      "id": "fgroup",
+      "type": "backend",
+      "label": "FileGroup",
+      "sublabel": "Name, Purpose, ExternalRef",
+      "pos": [
+        750,
+        100
+      ],
+      "size": [
+        200,
+        64
+      ]
+    },
+    {
+      "id": "setting",
+      "type": "backend",
+      "label": "UiSetting",
+      "sublabel": "AppKey, SettingKey, SettingType, Value",
+      "pos": [
+        300,
+        300
+      ],
+      "size": [
+        250,
+        64
+      ]
+    },
+    {
+      "id": "sgroup",
+      "type": "backend",
+      "label": "SettingGroup",
+      "sublabel": "AppKey, Name, Description",
+      "pos": [
+        750,
+        300
+      ],
+      "size": [
+        200,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Owner partition: OwnedBy + Version on every aggregate",
+      "wraps": [
+        "file",
+        "fgroup",
+        "setting",
+        "sgroup"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "file-bytes",
+      "from": "file",
+      "to": "bytes",
+      "label": "StorageKey",
+      "variant": "dashed"
+    },
+    {
+      "id": "file-group",
+      "from": "file",
+      "to": "fgroup",
+      "label": "GroupId, same owner",
+      "variant": "emphasis"
+    },
+    {
+      "id": "setting-group",
+      "from": "setting",
+      "to": "sgroup",
+      "label": "GroupId, same owner + AppKey",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Invariants",
+      "items": [
+        "Owner set at create, never changes",
+        "1 UiSetting per owner, AppKey, SettingKey",
+        "A group is deleted only when nothing links to it"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Files",
+      "items": [
+        "1 to 50,000,000 bytes; bytes never change",
+        "Checksum is SHA-256 of the stored bytes",
+        "Only GroupId changes after create"
+      ]
+    }
+  ]
+}

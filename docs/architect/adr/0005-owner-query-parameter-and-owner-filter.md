@@ -1,0 +1,21 @@
+# ADR-0005: The owner travels as the `owner` query parameter, enforced by DKNet.EfCore.DataAuthorization
+
+- **Status:** Accepted
+- **Context:**
+  - Every owner comes from the caller, never from the token. It is free text of up to 255 characters, so it may hold any Unicode character (requester decisions 3 to 5).
+  - HTTP header values are safe only for visible ASCII. A query parameter, URL-encoded, carries any character.
+  - DKNet.EfCore.DataAuthorization gives an owner field (`OwnedBy`), stamps it on new rows, refuses to move a row to another owner, and filters every query by owner. Its filter cannot be ignored and denies all rows when no owner is set.
+  - Group rules need "same owner": a file's group, and a setting's group, must have the file's or the setting's owner.
+- **Decision:**
+  - Every `/v1` route takes the owner as the required `owner` query parameter. The body never carries the owner.
+  - The ownership key of each request is that parameter. Every aggregate is owned through DKNet.EfCore.DataAuthorization.
+  - A record of another owner is not found (404). So a group of another owner cannot be linked.
+  - The audit fields hold the caller id, never the owner. The current user is never empty on a `/v1` call, so the package never stamps the owner into `CreatedBy`.
+- **Alternatives:**
+  - *An `X-Owner-Id` header.* Rejected: non-ASCII owners would break or need a second encoding.
+  - *The owner in the body.* Rejected: GET and DELETE have no body; one rule for every route is simpler.
+  - *A hand-written filter on every query.* Rejected: DKNet.EfCore.DataAuthorization already does it, and fails closed.
+  - *The owner from the token.* Rejected by the requester.
+- **Consequences:**
+  - Easier: one owner rule for every route, enforced below the endpoints.
+  - Harder: the owner is in the URL, so request logs and traces must drop the query string. Any caller with a permission can name any owner (05-quality, Authorization).
