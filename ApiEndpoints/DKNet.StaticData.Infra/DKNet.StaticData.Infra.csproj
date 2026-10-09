@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <LangVersion>default</LangVersion>
+        <ImplicitUsings>true</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+        <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+        <PackageReference Include="SlimMessageBus.Host.FluentValidation"/>
+        <PackageReference Include="SlimMessageBus.Host.Memory"/>
+        <PackageReference Include="SlimMessageBus.Host.Serialization.SystemTextJson"/>
+        <PackageReference Include="DKNet.EfCore.Events"/>
+        <PackageReference Include="DKNet.EfCore.Extensions"/>
+        <PackageReference Include="DKNet.EfCore.Relational.Helpers"/>
+        <PackageReference Include="DKNet.SlimBus.Extensions"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\DKNet.StaticData.AppServices\DKNet.StaticData.AppServices.csproj" />
+        <ProjectReference Include="..\DKNet.StaticData.Share\DKNet.StaticData.Share.csproj" />
+        <ProjectReference Include="..\DKNet.StaticData.Domains\DKNet.StaticData.Domains.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- DKNet.StaticData.Api needs internal CoreDbContext for ServiceConfigs.cs's PrincipalProvider registration. -->
+        <InternalsVisibleTo Include="DKNet.StaticData.Api"/>
+        <InternalsVisibleTo Include="DKNet.StaticData.App.Tests"/>
+        <InternalsVisibleTo Include="DKNet.StaticData.App.BDDTests"/>
+        <InternalsVisibleTo Include="DKNet.StaticData.App.TestSupport"/>
+        <!-- Each database project builds CoreDbContext for its own migrations. -->
+        <InternalsVisibleTo Include="DKNet.StaticData.Infra.Postgres"/>
+        <InternalsVisibleTo Include="DKNet.StaticData.Infra.MsSql"/>
+    </ItemGroup>
+</Project>

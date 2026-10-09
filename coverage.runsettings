@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <!-- MaxCpuCount=1: run test assemblies one at a time — some fixtures in this solution
+         mutate machine-global state (the local `dotnet new` template store) and must not
+         execute concurrently. -->
+    <RunConfiguration>
+        <MaxCpuCount>1</MaxCpuCount>
+    </RunConfiguration>
+    <DataCollectionRunSettings>
+        <DataCollectors>
+            <DataCollector friendlyName="XPlat Code Coverage">
+                <Configuration>
+                    <!-- Measure only the application: Api, AppServices, Domains, Infra, Share, Client.
+                         Local-run hosts (AppHost), test helpers (TestSupport), EF migrations and
+                         startup/migration plumbing marked [ExcludeFromCodeCoverage] are not business code. -->
+                    <Include>
+                        [DKNet.StaticData*]*
+                    </Include>
+                    <Exclude>
+                        [*.Tests]*,
+                        [*Tests]*,
+                        [*.TestObjects]*,
+                        [*TestDataLayer]*,
+                        [*.TestSupport]*,
+                        [*.AppHost]*
+                    </Exclude>
+                    <ExcludeByFile>
+                        **/bin/**,
+                        **/obj/**,
+                        **/*Tests.cs,
+                        **/*Test.cs,
+                        **/TestObjects/**,
+                        **/GlobalUsings.cs,
+                        **/Migrations/**,
+                        **/*.g.cs
+                    </ExcludeByFile>
+                    <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+                </Configuration>
+            </DataCollector>
+        </DataCollectors>
+    </DataCollectionRunSettings>
+</RunSettings>
