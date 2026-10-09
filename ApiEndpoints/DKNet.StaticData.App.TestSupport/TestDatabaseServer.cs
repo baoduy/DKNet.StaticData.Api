@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Data.Common;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Npgsql;
@@ -23,7 +25,14 @@ public enum TestDatabase
 public sealed class TestDatabaseServer : IAsyncDisposable
 {
     private const string PostgresImage = "postgres:16-alpine";
-    private const string SqlServerImage = "mcr.microsoft.com/mssql/server:2022-latest";
+
+    /// <summary>
+    /// Environment variable that overrides the SQL Server image. The default runs on amd64 (CI); an arm64 runtime,
+    /// where SQL Server crashes under emulation, sets <c>mcr.microsoft.com/azure-sql-edge</c> (DRK-2198 Q1).
+    /// </summary>
+    public const string SqlServerImageVariable = "TEST_SQLSERVER_IMAGE";
+
+    private const string DefaultSqlServerImage = "mcr.microsoft.com/mssql/server:2022-latest";
 
     private static readonly ConcurrentDictionary<TestDatabase, Lazy<Task<TestDatabaseServer>>> Shared = new();
 
@@ -37,6 +46,9 @@ public sealed class TestDatabaseServer : IAsyncDisposable
 
     public TestDatabase Database { get; }
 
+    private static string SqlServerImage =>
+        Environment.GetEnvironmentVariable(SqlServerImageVariable) is { Length: > 0 } image ? image : DefaultSqlServerImage;
+
     /// <summary>The server every test of this run shares. A server that failed to start fails every caller.</summary>
     public static Task<TestDatabaseServer> SharedAsync(TestDatabase database) =>
         Shared.GetOrAdd(database, d => new Lazy<Task<TestDatabaseServer>>(() => StartAsync(d))).Value;
@@ -46,7 +58,10 @@ public sealed class TestDatabaseServer : IAsyncDisposable
     {
         IDatabaseContainer container = database == TestDatabase.Postgres
             ? new PostgreSqlBuilder(PostgresImage).Build()
-            : new MsSqlBuilder(SqlServerImage).Build();
+            // SQL Edge ships no sqlcmd, which the builder's own readiness check runs; a login works on both images.
+            : new MsSqlBuilder(SqlServerImage)
+                .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new SqlServerLoginSucceeds()))
+                .Build();
         await container.StartAsync();
         return new TestDatabaseServer(database, container);
     }
@@ -80,6 +95,23 @@ public sealed class TestDatabaseServer : IAsyncDisposable
             : "SELECT s.name + '.' + q.name FROM sys.sequences q JOIN sys.schemas s ON s.schema_id = q.schema_id");
 
     public ValueTask DisposeAsync() => _container.DisposeAsync();
+
+    private sealed class SqlServerLoginSucceeds : IWaitUntil
+    {
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            try
+            {
+                await using var connection = new SqlConnection(((MsSqlContainer)container).GetConnectionString());
+                await connection.OpenAsync();
+                return true;
+            }
+            catch (SqlException)
+            {
+                return false;
+            }
+        }
+    }
 
     private DbConnection Connect(string connectionString) => Database == TestDatabase.Postgres
         ? new NpgsqlConnection(connectionString)
