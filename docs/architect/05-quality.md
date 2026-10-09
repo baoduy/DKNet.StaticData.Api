@@ -44,7 +44,7 @@
 
 | Data | Where it flows | Rule |
 |---|---|---|
-| Owner | Query string, database, idempotency records, API answers | Never logged. Request logs and traces drop the query string. |
+| Owner | Query string, database, idempotency records, API answers | Never logged. Request logs and traces drop the query string. Idempotency records holding it are deleted within 5 hours. |
 | File name | Upload form, database, `Content-Disposition`, API answers | Never logged. |
 | File bytes | Blob storage, upload and download streams | Never logged, never cached in memory as a whole by the service. |
 | External reference | Database, API answers | Never logged. |
@@ -81,6 +81,8 @@ Structured logs. Every entry carries the trace id and the caller id. None carrie
 | Bytes missing for an existing file | Error | file id, storage key |
 | Orphaned bytes after a failed delete | Warning | file id, storage key |
 | Blob storage or database unreachable | Error | the dependency, the exception type |
+| Idempotency sweep finished | Information | rows deleted |
+| Idempotency sweep failed | Warning | the exception type; the next hour retries |
 
 An operator finds orphaned bytes by the warning's storage key and removes them in the provider.
 
@@ -129,6 +131,7 @@ Integration tests run against real infrastructure (Policy 02):
 | A list with no `fromDate` or `toDate` returns a record created and last updated more than 3 months ago; Flow 5 finds and updates that setting | Both databases, audit times set in the past | DKNet's default 3-month window must stay off |
 | Upload, download, delete and the size and extension checks, at 50,000,000 bytes and 1 byte more | Local blob provider on a temporary folder | Real streaming and hashing |
 | Idempotent upload: replay after 201 (same body, no `Location` or `ETag`), 409 while the first runs, 1 file stored | The database's idempotency store, both databases | Real reservation and replay |
+| The sweep deletes idempotency rows whose `ExpiresAt` has passed and keeps the rest | The database's idempotency store, both databases, rows with past and future `ExpiresAt` | The package never deletes rows |
 | File name with non-ASCII characters in `Content-Disposition` | Local provider | Real headers |
 | Failed insert after stored bytes deletes the bytes | Local provider, database made to fail | The cleanup path |
 
@@ -148,4 +151,4 @@ Supporting detail:
 - **Owner:** the `owner` query parameter on every `/v1` route; the DKNet owner filter fails closed.
 - **Configuration:** `Database:Provider` = `Postgres` (default) or `SqlServer`; `BlobStorage:Provider` = `Local`, `AzureStorage` or `AwsS3`; `Files:AllowedExtensions`.
 - **Limits:** 50,000,000 bytes per file; 51,000,000-byte body and 300-second timeout on upload; 65,536 bytes per setting value.
-- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, scoped by caller and owner, `ConflictHandling` = `CachedResult`, 330-second in-flight reservation, kept 4 hours in the service's database.
+- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, scoped by caller and owner, `ConflictHandling` = `CachedResult`, 330-second in-flight reservation, kept 4 hours in the service's database, expired rows deleted by an hourly sweep.

@@ -32,6 +32,7 @@
 - Guard every update against a lost update from a concurrent caller.
 - Delete a file's metadata and bytes together when the caller deletes the file.
 - Log every file upload, download and delete, without personal data.
+- Delete expired idempotency records every hour. The DKNet stores never delete them.
 
 ## Non-goals
 

@@ -220,7 +220,7 @@ This service consumes no events.
 1. The caller posts the form to `POST /v1/files?owner=<owner>` with a token and an idempotency key.
 2. The service runs checks 1 to 8 (Exposed API). A failure answers and stores nothing.
 3. The service makes a new `FileId` and the storage key `files/<FileId><extension>`.
-4. It streams the bytes to blob storage and computes the SHA-256 checksum and the size while it streams.
+4. It reads the buffered upload once to compute the SHA-256 checksum and the size, then streams the bytes to blob storage.
 5. It inserts the `StoredFile` row with the owner, the checksum, the size and `Version` 1.
 6. It answers 201 with the metadata. The idempotency package keeps that status and body for 4 hours.
 
@@ -230,7 +230,7 @@ Failure paths:
 - The insert fails in step 5: the service deletes the stored bytes, best effort, and answers 503 or 500. If that delete fails too, it logs a warning with the file id and the storage key. Those bytes are orphaned and no caller can reach them.
 - The caller retries with the same key: while the first upload runs, 409; once it answered 201, the first status and body again, with no `Location` or `ETag`. No second file is stored.
 
-![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the permission, the owner, the extension and the size, streams the bytes to blob storage under a new storage key while it hashes them, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
+![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the permission, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
 
 ### Flow 2 — Download a file
 

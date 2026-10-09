@@ -97,7 +97,7 @@
       "from": "files",
       "to": "blob",
       "y": 296,
-      "label": "SaveAsync files/<id><ext>, hash SHA-256",
+      "label": "hash buffered bytes, SaveAsync files/<id><ext>",
       "variant": "emphasis"
     },
     {

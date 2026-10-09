@@ -115,6 +115,7 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 ### IdempotencyRecord (shape owned by DKNet.AspCore.Idempotency)
 
 - One record per caller, owner, route and key. It is reserved for 330 seconds when the request starts, then kept for 4 hours once a 2xx answer is stored (ADR-0012).
+- The package never deletes a row. This service's hourly sweep deletes every row whose `ExpiresAt` has passed, so a row lives at most 5 hours.
 - It holds the first answer's status, body and content type: file or group metadata. It holds no headers. The body holds the owner and the file name, which are personal data.
 - The package creates and migrates its own tables.
 
@@ -126,7 +127,7 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 | `FileGroup` | The caller deletes it, after unlinking or deleting its files | `DELETE /v1/file-groups/{groupId}` |
 | `UiSetting` | The caller deletes it | `DELETE /v1/ui-settings/{settingId}` |
 | `SettingGroup` | The caller deletes it, after unlinking or deleting its settings | `DELETE /v1/ui-setting-groups/{groupId}` |
-| Idempotency record | 4 hours after the first answer | The idempotency package |
+| Idempotency record | Its `ExpiresAt` passes: 330 seconds after the request starts, or 4 hours after a 2xx answer. Then up to 1 more hour until the next sweep. | This service's hourly sweep. The package never deletes a row (ADR-0012). |
 | Orphaned bytes (a failed best-effort delete) | An operator removes them | The operator, using the warning log entry that names the storage key |
 
-No record expires on its own. Erasing all of an owner's data is the caller's job: it lists and deletes each record. The list routes have no activity window, so a list with no `fromDate` or `toDate` reaches every record of the owner, however old.
+No record expires on its own. Erasing all of an owner's data is the caller's job: it lists and deletes each record. The list routes have no activity window, so a list with no `fromDate` or `toDate` reaches every record of the owner, however old. Idempotency records are not reachable through the API; the hourly sweep removes them within 5 hours.

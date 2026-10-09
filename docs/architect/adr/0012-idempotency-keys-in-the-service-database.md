@@ -5,6 +5,7 @@
   - A caller that times out on an upload retries. Without a guard, each retry stores another file.
   - `POST /v1/files` and `POST /v1/file-groups` have no natural unique key. The 2 settings create routes do, and answer 409 on a repeat.
   - DKNet.AspCore.Idempotency has stores for Postgres and SQL Server. Its header is `X-Idempotency-Key` by default, as in DKNet.Accounts.Api. Its key is built from a scope, the method, the route template and the key. It can set the scope with a resolver, and can replay the first answer.
+  - Neither SQL store ever deletes a row. Their READMEs say nothing sweeps expired rows, and `ExpiresAt` is indexed for the host's own cleanup job. Each kept answer holds the owner and the file name.
   - The service runs no Redis.
 - **Decision:**
   - `POST /v1/files` and `POST /v1/file-groups` require `X-Idempotency-Key`.
@@ -16,12 +17,14 @@
     - `IdempotencyHeaderKey` = `X-Idempotency-Key` and the key pattern (1 to 255 letters, digits, `-`, `_`), the defaults.
   - Only a 2xx answer is kept. A repeat after a 2xx answer, within 4 hours, gets the first status and JSON body back. It carries no `Location` and no `ETag`: the package replays the status, body and content type only. Nothing changes.
   - A repeat while the first request still holds its reservation answers 409, and nothing changes. The caller waits and repeats the same key.
+  - This service deletes expired rows. A background sweep runs in every replica once an hour. It deletes every row whose `ExpiresAt` is set and has passed, through the `IX_IdempotencyKeys_ExpiresAt` index, and logs how many rows it deleted. Sweeps that overlap across replicas are harmless: each deletes only rows that have already expired. The store already treats an expired row as free, so deleting it changes no answer.
   - An error answer is not kept, and the reservation stays until its 330 seconds end. A repeat in that time answers 409; after it, the request runs again. A caller that got an error answer sends a new key.
   - Records live in the service's own database, in the store for its `Database:Provider`.
 - **Alternatives:**
   - *No idempotency.* Rejected: retried uploads would store duplicate 50 MB files.
   - *The Redis store.* Rejected: a third store to run for one feature.
+  - *Leave expired rows in place.* Rejected: the table grows without end, and it keeps owners and file names that the erasure rule cannot reach.
   - *Idempotency on every POST.* Rejected: the settings routes are already guarded by their unique keys.
 - **Consequences:**
   - Easier: safe retries on uploads, with no new infrastructure.
-  - Harder: callers send a new key per upload, handle 409 while the first upload runs, and read `version` from the body of a replay. The replayed answer holds the owner and file name for 4 hours.
+  - Harder: callers send a new key per upload, handle 409 while the first upload runs, and read `version` from the body of a replay. This service owns the hourly sweep, because the package has none. A kept answer, with the owner and file name in it, lives at most 5 hours: 4 hours, plus up to 1 hour until the next sweep.

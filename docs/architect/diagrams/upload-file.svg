@@ -489,11 +489,11 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
         </g>
 
-        <g data-edge-from="files" data-edge-to="blob" data-edge-label="SaveAsync files/&lt;id&gt;&lt;ext&gt;, hash SHA-256" data-edge-key="4" data-edge-id="save">
+        <g data-edge-from="files" data-edge-to="blob" data-edge-label="hash buffered bytes, SaveAsync files/&lt;id&gt;&lt;ext&gt;" data-edge-key="4" data-edge-id="save">
           <path data-composition-edge-from="files" data-composition-edge-to="blob" data-composition-edge-id="save" data-composition-points="548,296;732.75,296" d="M 548 296 L 732.75 296" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <g>
-          <rect x="505.675" y="276" width="269.4" height="18" rx="3" class="c-mask"/>
-          <text x="640.375" y="286" class="t-edge-emphasis" font-size="11" text-anchor="middle">SaveAsync files/&lt;id&gt;&lt;ext&gt;, hash SHA-256</text>
+          <rect x="482.57500000000005" y="276" width="315.59999999999997" height="18" rx="3" class="c-mask"/>
+          <text x="640.375" y="286" class="t-edge-emphasis" font-size="11" text-anchor="middle">hash buffered bytes, SaveAsync files/&lt;id&gt;&lt;ext&gt;</text>
         </g>
         </g>
 

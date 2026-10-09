@@ -4,7 +4,7 @@
 - **Context:**
   - Every owner comes from the caller, never from the token. It is free text of up to 255 characters, so it may hold any Unicode character (requester decisions 3 to 5).
   - HTTP header values are safe only for visible ASCII. A query parameter, URL-encoded, carries any character.
-  - DKNet.EfCore.DataAuthorization gives an owner field (`OwnedBy`), stamps it on new rows, refuses to move a row to another owner, and filters every query by owner. Its filter cannot be ignored and denies all rows when no owner is set.
+  - DKNet.EfCore.DataAuthorization gives an owner field (`OwnedBy`), stamps it on new rows that have none, puts back the original owner when an update changes it, and filters every query by owner. Its filter cannot be ignored and denies all rows when no owner is set.
   - Group rules need "same owner": a file's group, and a setting's group, must have the file's or the setting's owner.
 - **Decision:**
   - Every `/v1` route takes the owner as the required `owner` query parameter. The body never carries the owner.
