@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Runtime Architecture (design revision 1)",
+    "title": "DKNet StaticData \u2014 Runtime Architecture (design revision 2)",
     "output": "runtime.html",
     "quality_profile": "showcase"
   },
@@ -11,7 +11,7 @@
       "id": "caller",
       "type": "external",
       "label": "Calling service",
-      "sublabel": "API or app backend",
+      "sublabel": "own token; may use the client",
       "pos": [
         20,
         296
@@ -39,7 +39,7 @@
       "id": "edge",
       "type": "backend",
       "label": "API edge",
-      "sublabel": "JWT, scope or role, owner",
+      "sublabel": "JWT, caller id, owner",
       "pos": [
         280,
         296
@@ -208,14 +208,14 @@
       "id": "edge-files",
       "from": "edge",
       "to": "files",
-      "label": "files.*",
+      "label": "files",
       "variant": "emphasis"
     },
     {
       "id": "edge-groups",
       "from": "edge",
       "to": "groups",
-      "label": "files.*",
+      "label": "file groups",
       "fromSide": "bottom",
       "toSide": "left"
     },
@@ -223,7 +223,7 @@
       "id": "edge-settings",
       "from": "edge",
       "to": "settings",
-      "label": "settings.*",
+      "label": "UI settings",
       "fromSide": "bottom",
       "toSide": "top"
     },
@@ -280,7 +280,7 @@
       "title": "Security",
       "items": [
         "Bearer token from client credentials only; no browser calls",
-        "Scope or app role: files.read, files.write, settings.read, settings.write",
+        "Any valid token with a caller id; no scope or app-role check",
         "Owner travels as the owner query parameter; the owner filter fails closed"
       ]
     },
@@ -299,7 +299,7 @@
       "items": [
         "Database:Provider = Postgres (default) or SqlServer",
         "One blob provider per deployment: Local, AzureStorage or AwsS3",
-        "GET /healthz anonymous; /healthz/detail needs a token"
+        "GET /healthz and /healthz/detail both anonymous"
       ]
     }
   ]

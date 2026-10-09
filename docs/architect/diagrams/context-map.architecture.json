@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Context Map (design revision 1)",
+    "title": "DKNet StaticData \u2014 Context Map (design revision 2)",
     "output": "context-map.html",
     "quality_profile": "showcase"
   },
@@ -219,7 +219,8 @@
       "items": [
         "Backend services and React app backends, with client-credentials tokens",
         "A browser never calls StaticData; it calls its own app backend",
-        "Every call names the owner"
+        "Every call names the owner",
+        "Callers may use the DKNet.StaticData.Client package from GitHub Packages"
       ]
     },
     {

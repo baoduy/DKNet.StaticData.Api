@@ -1,0 +1,23 @@
+# ADR-0013: Authentication only, no permissions
+
+- **Status:** Accepted
+- **Context:**
+  - ADR-0006 asked each caller for 1 of 4 permissions per route: `files.read`, `files.write`, `settings.read`, `settings.write`.
+  - The requester decided on 2026-10-09 (DRK-2187) that every authenticated caller may call every route.
+  - By default, Entra ID gives an app-only token to any app in the tenant. "Assignment required" on the API's app limits tokens to the apps the operator assigns.
+  - The audit fields need the caller id, so a token without one cannot be accepted.
+- **Decision:**
+  - Every `/v1` route needs a valid bearer token for this API. Nothing else is checked in the token.
+  - No scope or app-role check. No route answers 403 for a missing permission.
+  - The caller id is the first of `client_id`, `azp`, `appid`. A valid token with none of them answers 401. This rule carries over from ADR-0006 unchanged.
+  - Each deployment turns on "Assignment required" for this API's app in Microsoft Entra ID, and assigns only the calling apps it trusts.
+  - The local Keycloak defines no scopes for this service.
+  - The owner stays a value the caller sends (ADR-0005).
+- **Alternatives:**
+  - *Keep the 4 permissions of ADR-0006.* Rejected by the requester.
+  - *One permission for everything.* Not chosen: "Assignment required" already limits who gets a token, so one permission adds a grant with no further limit.
+- **Consequences:**
+  - Easier: operators define no app roles and grant none; callers ask for no scope.
+  - Harder: a caller that holds a token can read and delete every owner's files and settings. The requester accepted this risk.
+  - Harder: a deployment that leaves "Assignment required" off lets every app in the tenant call the service.
+  - Supersedes ADR-0006.

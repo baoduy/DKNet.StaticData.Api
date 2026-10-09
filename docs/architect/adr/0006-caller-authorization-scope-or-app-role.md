@@ -1,6 +1,6 @@
 # ADR-0006: Authorize callers by scope or app role, 4 permissions
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0013
 - **Context:**
   - Callers use machine-to-machine tokens only (requester decision 10).
   - An Entra ID client-credentials token carries app roles in `roles`, not scopes. The local Keycloak puts scopes in `scope`.

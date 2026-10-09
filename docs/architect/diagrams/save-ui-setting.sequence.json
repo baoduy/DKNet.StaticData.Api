@@ -16,7 +16,7 @@
       "id": "be",
       "type": "external",
       "label": "App backend",
-      "sublabel": "settings.read + write"
+      "sublabel": "M2M token"
     },
     {
       "id": "api",
