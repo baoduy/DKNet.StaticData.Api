@@ -7,6 +7,7 @@ using DKNet.StaticData.Infra.Contexts;
 using DKNet.StaticData.Infra.Extensions;
 using DKNet.StaticData.Infra.Services;
 using SlimMessageBus;
+using DKNet.StaticData.Infra.Postgres;
 
 namespace DKNet.StaticData.App.Tests.Architecture;
 

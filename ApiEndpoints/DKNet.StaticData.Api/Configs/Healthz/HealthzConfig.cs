@@ -1,5 +1,4 @@
 using HealthChecks.UI.Client;
-using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Infra.Contexts;
 
 namespace DKNet.StaticData.Api.Configs.Healthz;
@@ -16,12 +15,10 @@ internal static class HealthzConfig
             return services;
         }
 
-        // AddDbContextCheck<DbContext>() (the base class) previously resolved nothing — only CoreDbContext is
-        // registered in DI (InfraSetup.AddInfraServices) — so this check threw on every call instead of ever
-        // reporting Unhealthy, hiding real DB-down states behind an unhandled exception.
+        // The database is the only check. The default test query (CanConnectAsync) swallows the connect
+        // exception, so the detail report would show no failure text; this one lets it surface.
         services.AddHealthChecks()
-            .AddDbContextCheck<CoreDbContext>()
-            .AddCheck<HealthCheckHandler>(SharedConsts.ApiName);
+            .AddDbContextCheck<CoreDbContext>(customTestQuery: PingDatabaseAsync);
         services.MarkConfigAdded(nameof(HealthzConfig));
         return services;
     }
@@ -47,27 +44,42 @@ internal static class HealthzConfig
             ResponseWriter = WriteStatusOnlyResponse
         };
         endpoints.MapHealthChecks("/healthz", publicOptions).AllowAnonymous();
-        endpoints.MapHealthChecks("/", publicOptions).AllowAnonymous();
 
-        // Detailed surface: full per-check report, behind authorization only.
+        // Detailed surface: the per-check report, anonymous like the status route (DRK-2198 R4) — the only other
+        // route the FallbackPolicy lets through without a token.
         var detailOptions = new HealthCheckOptions
         {
             AllowCachingResponses = false,
             Predicate = _ => true,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         };
-        var detail = endpoints.MapHealthChecks("/healthz/detail", detailOptions);
-
-        // Only enforceable when AuthConfig actually wired UseAuthorization() — with RequireAuthorization off
-        // there is no authorization middleware to evaluate the requirement (same guard as SwaggerConfig).
-        if (endpoints.Services.IsConfigAdded(nameof(AuthConfig)))
-        {
-            detail.RequireAuthorization();
-        }
+        endpoints.MapHealthChecks("/healthz/detail", detailOptions).AllowAnonymous();
 
         endpoints.Logger.LogInformation("{Feature} enabled", nameof(HealthzConfig));
 
         return endpoints;
+    }
+
+    /// <summary>
+    ///     Runs one round trip on a raw connection, outside EF Core's retrying execution strategy, so a stopped
+    ///     database fails the check at once and its exception reaches the report. A pooled connection alone is no
+    ///     proof: opening one does not touch the server.
+    /// </summary>
+    private static async Task<bool> PingDatabaseAsync(CoreDbContext db, CancellationToken cancellationToken)
+    {
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT 1";
+            await command.ExecuteScalarAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            await connection.CloseAsync();
+        }
     }
 
     private static Task WriteStatusOnlyResponse(HttpContext context, HealthReport report)

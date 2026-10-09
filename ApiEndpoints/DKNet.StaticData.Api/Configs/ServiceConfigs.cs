@@ -11,8 +11,7 @@ internal static class ServiceConfigs
 
     public static IServiceCollection AddAllAppServices(
         this IServiceCollection services,
-        IConfiguration configuration,
-        FeatureOptions features)
+        DatabaseProvider database)
     {
         services
             .AddSingleton<IHttpContextAccessor, HttpContextAccessor>()
@@ -28,10 +27,10 @@ internal static class ServiceConfigs
 
         services
             .AddAppServices()
-            .AddInfraServices()
+            .AddInfraServices(DatabaseConfig.UseDatabase(database))
 
             //Service Bus
-            .AddServiceBus(configuration, typeof(AppSetup).Assembly, features);
+            .AddServiceBus(typeof(AppSetup).Assembly);
 
         return services;
     }

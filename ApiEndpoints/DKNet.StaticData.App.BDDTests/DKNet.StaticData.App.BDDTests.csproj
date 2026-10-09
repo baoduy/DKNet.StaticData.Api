@@ -2,9 +2,6 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
-        <!-- The @redis scenario needs Docker; keep it out of a bare "dotnet test" run (still runnable via an
-             explicit filter targeting TestCategory=redis). -->
-        <VSTestTestCaseFilter>TestCategory!=redis</VSTestTestCaseFilter>
     </PropertyGroup>
 
     <PropertyGroup>

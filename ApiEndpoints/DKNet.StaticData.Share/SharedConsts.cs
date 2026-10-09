@@ -11,11 +11,6 @@ public static class SharedConsts
     #region Properties
 
     /// <summary>
-    ///     Gets the connection string name for Azure Service Bus.
-    /// </summary>
-    public static string AzureBusConnectionString => "AzureBus";
-
-    /// <summary>
     ///     Gets the configuration key of the operator's database choice (<see cref="DatabaseProvider" />).
     /// </summary>
     public static string DatabaseProviderKey => "Database:Provider";
@@ -24,11 +19,6 @@ public static class SharedConsts
     ///     Gets the connection string name for the application database.
     /// </summary>
     public static string DbConnectionString => "AppDb";
-
-    /// <summary>
-    ///     Gets the connection string name for Redis cache.
-    /// </summary>
-    public static string RedisConnectionString => "Redis";
 
     /// <summary>
     ///     Gets the system account identifier.

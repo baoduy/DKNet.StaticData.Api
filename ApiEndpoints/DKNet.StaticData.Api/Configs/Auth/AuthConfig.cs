@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using DKNet.StaticData.Api.ApiEndpoints.AutomatedSample;
 
 namespace DKNet.StaticData.Api.Configs.Auth;
 
@@ -35,28 +33,7 @@ internal static class AuthConfig
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .Build();
-
-            // TODO: Replace "sample-scope" with the actual scope value from your identity provider,
-            //       then apply the policy to an endpoint with .RequireAuthorization(HasScopeRequirement.PolicyName).
-            options.AddPolicy(
-                HasScopeRequirement.PolicyName,
-                policy => policy.Requirements.Add(new HasScopeRequirement("sample-scope")));
-
-            // Product's per-route scopes (DRK-1386 §5): one policy per scope, the scope value doubling
-            // as its own policy name, so a route can call .RequireAuthorization(ProductScopes.Read) etc.
-            foreach (var scope in ProductScopes.All)
-            {
-                options.AddPolicy(scope, policy => policy.Requirements.Add(new HasScopeRequirement(scope)));
-            }
         });
-
-        // Sample IClaimsTransformation: enriches the user principal after authentication.
-        // TODO: Replace SampleClaimsTransformation with your real implementation or remove if not needed.
-        services.AddScoped<IClaimsTransformation, SampleClaimsTransformation>();
-
-        // Sample IAuthorizationHandler: evaluates HasScopeRequirement.
-        // TODO: Replace HasScopeHandler with your real handler(s) or remove if not needed.
-        services.AddScoped<IAuthorizationHandler, HasScopeHandler>();
 
         return services;
     }

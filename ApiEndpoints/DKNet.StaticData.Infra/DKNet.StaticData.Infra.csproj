@@ -14,10 +14,8 @@
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
         <PackageReference Include="Microsoft.Extensions.FileProviders.Abstractions"/>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
-        <PackageReference Include="SlimMessageBus.Host.AzureServiceBus"/>
         <PackageReference Include="SlimMessageBus.Host.FluentValidation"/>
         <PackageReference Include="SlimMessageBus.Host.Memory"/>
         <PackageReference Include="SlimMessageBus.Host.Serialization.SystemTextJson"/>
@@ -39,9 +37,8 @@
         <InternalsVisibleTo Include="DKNet.StaticData.App.Tests"/>
         <InternalsVisibleTo Include="DKNet.StaticData.App.BDDTests"/>
         <InternalsVisibleTo Include="DKNet.StaticData.App.TestSupport"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Migrations\"/>
+        <!-- Each database project builds CoreDbContext for its own migrations. -->
+        <InternalsVisibleTo Include="DKNet.StaticData.Infra.Postgres"/>
+        <InternalsVisibleTo Include="DKNet.StaticData.Infra.MsSql"/>
     </ItemGroup>
 </Project>

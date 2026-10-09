@@ -38,11 +38,6 @@ public class FeatureOptions
     public bool EnableRateLimit { get; set; } = true;
 
     /// <summary>
-    ///     Gets or sets a value indicating whether the service bus is enabled.
-    /// </summary>
-    public bool EnableServiceBus { get; set; }
-
-    /// <summary>
     ///     Gets or sets a value indicating whether Swagger/OpenAPI documentation is enabled.
     /// </summary>
     public bool EnableSwagger { get; set; }

@@ -3,7 +3,6 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using DKNet.StaticData.Api.ApiEndpoints.AutomatedSample;
 
 namespace DKNet.StaticData.App.TestSupport;
 
@@ -23,16 +22,9 @@ public sealed class TestAuthHandler(
 
     /// <summary>
     /// Request header carrying the caller's scope claim for one request — space- or comma-separated,
-    /// either way normalized to the space-separated form <c>HasScopeHandler</c> parses. Overrides
-    /// <see cref="DefaultScopes" /> when present (DRK-1386 row 19).
+    /// either way normalized to the space-separated <c>scp</c> form. Without it the caller holds no scope.
     /// </summary>
     public const string ScopesHeaderName = "X-Test-Scopes";
-
-    /// <summary>
-    /// Every <see cref="ProductScopes"/> entry, space-joined — keeps every pre-existing auth-on test
-    /// passing without this header, and never needs updating by hand when a scope is added or removed.
-    /// </summary>
-    public static readonly string DefaultScopes = string.Join(' ', ProductScopes.All);
 
     /// <summary>
     /// The claim <c>PrincipalProvider</c> reads as <c>ProfileId</c> — <c>DataOwnerHook</c> stamps
@@ -43,17 +35,18 @@ public sealed class TestAuthHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var scopes = Request.Headers.TryGetValue(ScopesHeaderName, out var header) && !string.IsNullOrEmpty(header)
-            ? header.ToString().Replace(',', ' ')
-            : DefaultScopes;
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, CallerName),
+            new(ClaimTypes.NameIdentifier, CallerProfileId.ToString())
+        };
 
-        var identity = new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.Name, CallerName),
-                new Claim(ClaimTypes.NameIdentifier, CallerProfileId.ToString()),
-                new Claim("scp", scopes)
-            ],
-            SchemeName);
+        if (Request.Headers.TryGetValue(ScopesHeaderName, out var header) && !string.IsNullOrEmpty(header))
+        {
+            claims.Add(new Claim("scp", header.ToString().Replace(',', ' ')));
+        }
+
+        var identity = new ClaimsIdentity(claims, SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }

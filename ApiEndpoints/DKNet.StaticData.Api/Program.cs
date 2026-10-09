@@ -13,6 +13,10 @@ var feature = builder.Configuration.GetSection(FeatureOptions.Name).Get<FeatureO
 builder.AddLogConfig(feature)
     .AddAzureAppConfig(feature);
 
+// The database choice is read once its sources are loaded and before the job dispatch and any app service is
+// registered, so an unknown value stops the service before the host is built (DRK-2198 R1).
+var database = DatabaseConfig.ResolveProvider(builder.Configuration);
+
 // The service decides what to do from its process arguments alone (R1) — no environment check, no configuration
 // value. Dispatched before any service registration and before anything that could serve traffic or connect to
 // the message bus (§3 row 2), so a job run loads only what the job needs (R4).
@@ -32,12 +36,12 @@ if (jobSelection.HasJobName)
 builder.AddFluentValidationConfig();
 
 //Run migration (when configured to) and continue to serve.
-await builder.RunMigrationAsync(feature);
+await builder.RunMigrationAsync(feature, database);
 
 // Add services to the container.
 builder.Services
     .AddOptions(builder.Configuration)
-    .AddAppConfig(feature, builder.Configuration)
+    .AddAppConfig(feature, builder.Configuration, database)
     // Populates [FromClaim] members (e.g. ByUser) before validation and before the handler, from the
     // authenticated caller's own claims.
     .AddContextualRequestPopulation();

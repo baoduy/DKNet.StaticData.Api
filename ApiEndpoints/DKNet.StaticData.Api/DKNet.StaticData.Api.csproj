@@ -19,13 +19,10 @@
         <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
         <PackageReference Include="DKNet.AspCore.Extensions" />
         <PackageReference Include="DKNet.AspCore.Idempotency" />
-        <PackageReference Include="DKNet.AspCore.Idempotency.RedisStore" />
         <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
-        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
         <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
         <PackageReference Include="OpenTelemetry" />
@@ -41,6 +38,8 @@
     <ItemGroup>
         <ProjectReference Include="..\DKNet.StaticData.AppServices\DKNet.StaticData.AppServices.csproj" />
         <ProjectReference Include="..\DKNet.StaticData.Infra\DKNet.StaticData.Infra.csproj" />
+        <ProjectReference Include="..\DKNet.StaticData.Infra.MsSql\DKNet.StaticData.Infra.MsSql.csproj" />
+        <ProjectReference Include="..\DKNet.StaticData.Infra.Postgres\DKNet.StaticData.Infra.Postgres.csproj" />
     </ItemGroup>
 
     <ItemGroup>

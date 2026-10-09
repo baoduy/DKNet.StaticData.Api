@@ -5,8 +5,7 @@ namespace DKNet.StaticData.App.Tests.Integration.Support;
 /// <summary>
 /// <see cref="ApiFixture" /> variant with <c>FeatureManagement:EnableDemoAuthentication</c> flipped off, so the
 /// caller stays genuinely unauthenticated even though the Testing overlay enables the built-in demonstration
-/// provider by default — proves the true-anonymous path (<see cref="ProductSensitiveDataAnonymousTests" />)
-/// independently of that default.
+/// provider by default — proves the true-anonymous path independently of that default.
 /// </summary>
 /// <remarks>
 /// See <see cref="AuthOnApiFixture" />'s remarks for why the early-bind env var is required here too.

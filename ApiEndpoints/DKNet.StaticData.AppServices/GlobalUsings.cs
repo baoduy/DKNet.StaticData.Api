@@ -4,7 +4,6 @@ global using System.ComponentModel.DataAnnotations;
 global using System.Security.Claims;
 global using System.Text.Json.Serialization;
 global using FluentResults;
-global using DKNet.StaticData.Domains.Services;
 global using Microsoft.Extensions.DependencyInjection;
 global using FluentValidation;
 global using Mapster;

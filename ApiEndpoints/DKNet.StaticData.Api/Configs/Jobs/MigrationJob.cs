@@ -8,10 +8,15 @@ namespace DKNet.StaticData.Api.Configs.Jobs;
 [ExcludeFromCodeCoverage]
 internal static class MigrationJob
 {
+    /// <summary>The job entry <see cref="JobRegistry" /> dispatches to: migrates the configured database.</summary>
+    public static Task<int> RunAsync(WebApplicationBuilder builder) =>
+        RunAsync(builder, DatabaseConfig.ResolveProvider(builder.Configuration));
+
+    /// <summary>Migrates the chosen <paramref name="database" />.</summary>
     [SuppressMessage("Design", "CA1031:Do not catch general exception types",
         Justification = "This is a process job boundary: any failure must become a non-zero exit code with the " +
                          "failure visible on output (R5), not an unhandled crash.")]
-    public static async Task<int> RunAsync(WebApplicationBuilder builder)
+    public static async Task<int> RunAsync(WebApplicationBuilder builder, DatabaseProvider database)
     {
         // Disposing the built provider is what flushes the OTel exporter before process exit (R3) — no host is
         // built (builder.Build() is never called), so the job still connects to no message bus and binds no
@@ -23,7 +28,7 @@ internal static class MigrationJob
         {
             logger.LogInformation("Running Db migration...");
             var connectionString = builder.Configuration.GetConnectionString(SharedConsts.DbConnectionString);
-            await InfraMigration.MigrateDb(connectionString!);
+            await InfraMigration.MigrateDb(connectionString!, DatabaseConfig.UseDatabase(database));
             logger.LogInformation("Db migration is completed");
             return 0;
         }

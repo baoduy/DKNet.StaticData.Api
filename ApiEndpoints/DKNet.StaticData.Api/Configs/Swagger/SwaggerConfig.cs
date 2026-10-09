@@ -49,8 +49,7 @@ internal static class SwaggerConfig
     ///     <c>MapHealthChecks</c> registers a raw <see cref="RequestDelegate" /> pipeline, so ApiExplorer never
     ///     sees the health routes (no <c>MethodInfo</c> metadata) and no endpoint convention —
     ///     <c>WithName</c>/<c>WithTags</c>/<c>WithGroupName</c> — can put them in the document. They are described
-    ///     here by hand and must be kept in step with <see cref="HealthzConfig.UseHealthzConfig" />. The same
-    ///     public probe is also mapped at "/", left undocumented on purpose to keep the root out of the API surface.
+    ///     here by hand and must be kept in step with <see cref="HealthzConfig.UseHealthzConfig" />.
     /// </summary>
     private static void AddHealthzPaths(OpenApiDocument doc)
     {
@@ -68,7 +67,7 @@ internal static class SwaggerConfig
 
         doc.Paths["/healthz/detail"] = HealthPath(doc,
             "Health report",
-            "Full per-check report. Requires an authenticated caller when authorization is enabled.",
+            "Full per-check report: the database check's status, duration and failure message. Anonymous.",
             new OpenApiSchema { Type = JsonSchemaType.Object });
     }
 

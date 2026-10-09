@@ -1,5 +1,4 @@
 ﻿using DKNet.AspCore.Idempotency;
-using DKNet.AspCore.Idempotency.RedisStore;
 using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
 using DKNet.StaticData.Api.Configs.RateLimits;
@@ -15,7 +14,8 @@ internal static class AppConfig
     public static IServiceCollection AddAppConfig(
         this IServiceCollection services,
         FeatureOptions features,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        DatabaseProvider database)
     {
         if (features.EnableAntiforgery)
         {
@@ -65,24 +65,12 @@ internal static class AppConfig
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
-        services.CacheConfig(configuration);
-
-        var redisConnectionString = configuration.GetConnectionString(SharedConsts.RedisConnectionString);
-        if (!string.IsNullOrWhiteSpace(redisConnectionString))
-        {
-            services.AddIdempotencyWithRedisStore(
-                redisConnectionString,
-                o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
-        }
-        else
-        {
-            //InMemory store
-            services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
-        }
+        //InMemory store
+        services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
 
         return services
             .AddCrosConfig(configuration)
-            .AddAllAppServices(configuration, features)
+            .AddAllAppServices(database)
             .AddHealthzConfig(features);
     }
 

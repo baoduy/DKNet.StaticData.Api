@@ -1,9 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using Azure.Messaging.ServiceBus;
-using DKNet.StaticData.Domains.Features.AutomatedSample.Entities;
 using DKNet.StaticData.Infra.Contexts;
-using DKNet.StaticData.Infra.Features.AutomatedSample.ExternalEvents;
-using DKNet.StaticData.Share.Options;
 
 namespace DKNet.StaticData.Infra.Extensions;
 
@@ -11,51 +7,6 @@ namespace DKNet.StaticData.Infra.Extensions;
 public static class ServiceBusSetup
 {
     #region Methods
-
-    private static MessageBusBuilder AddAzureBus(this MessageBusBuilder builder, string connectionString)
-    {
-        builder.AddChildBus(
-            "AzureBus",
-            azb =>
-            {
-                azb.AddServicesFromAssembly(typeof(InfraSetup).Assembly)
-                    .WithProviderServiceBus(st =>
-                    {
-                        st.ConnectionString = connectionString;
-                        st.ClientFactory = (_, settings) =>
-                            new ServiceBusClient(
-                                settings.ConnectionString,
-                                new ServiceBusClientOptions
-                                {
-                                    // Use WebSockets transport for Azure Service Bus
-                                    TransportType = ServiceBusTransportType.AmqpWebSockets
-                                });
-
-                        st.TopologyProvisioning = new ServiceBusTopologySettings
-                        {
-                            Enabled = false,
-                            CanProducerCreateTopic = true,
-                            CanProducerCreateQueue = true,
-                            CanConsumerCreateSubscription = true,
-                            CanConsumerCreateQueue = true,
-                            CreateSubscriptionOptions = op =>
-                            {
-                                op.EnableBatchedOperations = true;
-                                op.MaxDeliveryCount = 10;
-                                op.AutoDeleteOnIdle = TimeSpan.FromDays(60);
-                                op.DeadLetteringOnMessageExpiration = true;
-                                op.DefaultMessageTimeToLive = TimeSpan.FromDays(7);
-                            }
-                        };
-                    });
-
-                azb.Produce<ProductCreatedEvent>(o => o.DefaultTopic("product-tp"));
-                azb.Consume<ProductCreatedEvent>(o => o.Path("product-tp")
-                    .SubscriptionName("product-sub")
-                    .WithConsumer<ProductCreatedNotificationHandler>());
-            });
-        return builder;
-    }
 
     internal static MessageBusBuilder AddMemoryBus(this MessageBusBuilder builder, Assembly serviceAssembly)
     {
@@ -77,14 +28,8 @@ public static class ServiceBusSetup
         return builder;
     }
 
-    public static IServiceCollection AddServiceBus(
-        this IServiceCollection service,
-        IConfiguration configuration,
-        Assembly serviceAssembly,
-        FeatureOptions features)
+    public static IServiceCollection AddServiceBus(this IServiceCollection service, Assembly serviceAssembly)
     {
-        var busConnectionString = configuration.GetConnectionString(SharedConsts.AzureBusConnectionString)!;
-
         service.AddSlimBusEfCoreInterceptor<CoreDbContext>()
             .AddSlimMessageBus(mbb =>
         {
@@ -92,11 +37,6 @@ public static class ServiceBusSetup
             mbb.AddJsonSerializer();
 
             mbb.AddMemoryBus(serviceAssembly);
-
-            if (features.EnableServiceBus && !string.IsNullOrWhiteSpace(busConnectionString))
-            {
-                mbb.AddAzureBus(busConnectionString);
-            }
         });
 
         return service;

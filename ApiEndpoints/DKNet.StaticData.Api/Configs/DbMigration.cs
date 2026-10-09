@@ -13,14 +13,17 @@ internal static class DbMigration
     ///     <see cref="MigrationJob" /> the "migration" argument dispatches to (§3 row 1), not a second
     ///     implementation of it.
     /// </summary>
-    public static async Task RunMigrationAsync(this WebApplicationBuilder builder, FeatureOptions features)
+    public static async Task RunMigrationAsync(
+        this WebApplicationBuilder builder,
+        FeatureOptions features,
+        DatabaseProvider database)
     {
         if (!features.RunDbMigrationWhenAppStart)
         {
             return;
         }
 
-        var exitCode = await MigrationJob.RunAsync(builder);
+        var exitCode = await MigrationJob.RunAsync(builder, database);
         if (exitCode != 0)
         {
             throw new InvalidOperationException("Startup database migration failed.");

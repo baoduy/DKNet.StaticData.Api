@@ -2,8 +2,6 @@
 using DKNet.EfCore.Extensions.Extensions;
 using DKNet.EfCore.Hooks;
 using DKNet.EfCore.Specifications;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using DKNet.StaticData.Domains.Services;
 using DKNet.StaticData.Infra.Contexts;
 using DKNet.StaticData.Infra.Services;
 
@@ -23,11 +21,15 @@ public static class InfraSetup
     /// domain event publishing, and the EF Core <see cref="CoreDbContext"/> setup.
     /// </summary>
     /// <param name="service">The service collection used to register dependencies.</param>
+    /// <param name="useDatabase">
+    /// The chosen database's provider setup, given the options builder and the <c>AppDb</c> connection string.
+    /// </param>
     /// <returns>The same <see cref="IServiceCollection"/> instance for chaining.</returns>
-    public static IServiceCollection AddInfraServices(this IServiceCollection service)
+    public static IServiceCollection AddInfraServices(
+        this IServiceCollection service,
+        Action<DbContextOptionsBuilder, string> useDatabase)
     {
         service
-            .AddScoped<IMembershipService, MembershipService>()
             .AddSpecRepo<CoreDbContext>()
             .AddEventPublisher<CoreDbContext, EventPublisher>()
             .AddDbContextWithHook<CoreDbContext>((sp, builder) =>
@@ -35,43 +37,12 @@ public static class InfraSetup
                 var config = sp.GetRequiredService<IConfiguration>();
                 var conn = config.GetConnectionString(SharedConsts.DbConnectionString)!;
 
-                builder.UseNpgsqlWithMigration(conn)
-                    .UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(Sequences).Assembly])
+                useDatabase(builder, conn);
+                builder.UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(DomainEntity).Assembly])
                     .UseAutoDataSeeding([typeof(InfraSetup).Assembly]);
             });
 
         return service;
-    }
-
-    /// <summary>
-    /// Configures PostgreSQL options, migration metadata, query behavior, and retry settings
-    /// for the current <see cref="DbContextOptionsBuilder"/>.
-    /// </summary>
-    /// <param name="builder">The options builder to configure.</param>
-    /// <param name="connectionString">The PostgreSQL connection string.</param>
-    /// <returns>The configured <see cref="DbContextOptionsBuilder"/>.</returns>
-    internal static DbContextOptionsBuilder UseNpgsqlWithMigration(
-        this DbContextOptionsBuilder builder,
-        string connectionString)
-    {
-        builder.ConfigureWarnings(warnings =>
-        {
-            warnings.Log(RelationalEventId.PendingModelChangesWarning);
-            //warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
-        });
-#if DEBUG
-        builder.EnableDetailedErrors().EnableSensitiveDataLogging();
-#endif
-
-        return builder.UseNpgsql(
-            connectionString,
-            o => o
-                .MinBatchSize(1)
-                .MaxBatchSize(100)
-                .MigrationsHistoryTable(nameof(CoreDbContext), DomainSchemas.Migration)
-                .MigrationsAssembly(typeof(CoreDbContext).Assembly)
-                .EnableRetryOnFailure()
-                .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
     }
 
     #endregion

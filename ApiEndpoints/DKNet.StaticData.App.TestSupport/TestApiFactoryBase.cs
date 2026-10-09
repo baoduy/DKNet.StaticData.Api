@@ -7,16 +7,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using DKNet.StaticData.Domains.Services;
 using DKNet.StaticData.Infra.Contexts;
 
 namespace DKNet.StaticData.App.TestSupport;
 
 /// <summary>
 /// Shared host substitution for <c>WebApplicationFactory&lt;DKNet.StaticData.Api.Program&gt;</c> — swaps the real
-/// DbContext for EF Core InMemory and the real membership service for <see cref="TestMembershipService"/>,
-/// the same substitution both the xUnit integration suite and the Reqnroll BDD suite need. Suite-specific
-/// concerns (Redis, per-scenario feature overrides, IAsyncLifetime) belong in a subclass.
+/// DbContext for EF Core InMemory, the same substitution both the xUnit integration suite and the Reqnroll BDD
+/// suite need. Suite-specific concerns (per-scenario feature overrides, IAsyncLifetime) belong in a subclass.
 /// </summary>
 public abstract class TestApiFactoryBase(string? dbName = null) : WebApplicationFactory<DKNet.StaticData.Api.Program>
 {
@@ -56,8 +54,8 @@ public abstract class TestApiFactoryBase(string? dbName = null) : WebApplication
     }
 
     /// <summary>
-    /// Swaps the real DbContext for EF Core InMemory and the real membership service for
-    /// <see cref="TestMembershipService"/>. Override to extend (call <c>base.ConfigureTestServices</c> first).
+    /// Swaps the real DbContext for EF Core InMemory. Override to extend (call <c>base.ConfigureTestServices</c>
+    /// first).
     /// </summary>
     protected virtual void ConfigureTestServices(IServiceCollection services)
     {
@@ -72,9 +70,6 @@ public abstract class TestApiFactoryBase(string? dbName = null) : WebApplication
         services.AddDbContextWithHook<CoreDbContext>((_, options) => options
             .UseInMemoryDatabase(_dbName)
             .UseAutoConfigModel([typeof(CoreDbContext).Assembly]));
-
-        services.RemoveAll<IMembershipService>();
-        services.AddSingleton<IMembershipService, TestMembershipService>();
     }
 
     public IServiceScope CreateScope() => Services.CreateScope();

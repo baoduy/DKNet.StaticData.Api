@@ -44,13 +44,6 @@
     <ItemGroup>
         <ProjectReference Include="..\DKNet.StaticData.Api\DKNet.StaticData.Api.csproj" />
         <ProjectReference Include="..\DKNet.StaticData.App.TestSupport\DKNet.StaticData.App.TestSupport.csproj" />
-        <ProjectReference Include="..\DKNet.StaticData.Client\DKNet.StaticData.Client.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Update="Data\busConfig.json">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
     </ItemGroup>
 
 </Project>
