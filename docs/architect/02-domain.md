@@ -9,7 +9,8 @@
 | Term | Meaning | Not to be confused with |
 |---|---|---|
 | Owner | Free text of 1 to 255 characters that the caller names on every call. Every record belongs to exactly one owner. It is often a user id or a customer id. | The caller. One caller works for many owners. |
-| Caller | The backend system that sent the request, known by its token's `client_id`, `azp` or `appid` claim (ADR-0013). | The owner, or the end user of the caller's app. |
+| Caller | The backend system that sent the request, known by its token's `client_id`, `azp` or `appid` claim. Its token carries the app roles it holds (ADR-0016). | The owner, or the end user of the caller's app. |
+| App role | A permission an operator assigns to a calling app: `staticdata.read` or `staticdata.write`. It travels in the token's `roles` claim (ADR-0016). | The owner. The owner is a partition, not a permission. |
 | File | One stored document: its metadata in the database and its bytes in blob storage. The aggregate is `StoredFile`. | A file group. |
 | Stored bytes | The content of a file in blob storage. They never change after upload. | The file's metadata. |
 | Storage key | The name of the bytes in blob storage: `files/<file id><extension>`. Internal; never returned to a caller. | The file name. |

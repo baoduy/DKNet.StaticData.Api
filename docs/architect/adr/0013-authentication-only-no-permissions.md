@@ -1,6 +1,6 @@
 # ADR-0013: Authentication only, no permissions
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0016
 - **Context:**
   - ADR-0006 asked each caller for 1 of 4 permissions per route: `files.read`, `files.write`, `settings.read`, `settings.write`.
   - The requester decided on 2026-10-09 (DRK-2187) that every authenticated caller may call every route.

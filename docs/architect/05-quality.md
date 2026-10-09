@@ -6,7 +6,7 @@
 
 | Boundary | What crosses it | Control |
 |---|---|---|
-| Caller → service edge | HTTPS calls from backend services | Bearer token validated against the OIDC issuer; no permission check (ADR-0013) |
+| Caller → service edge | HTTPS calls from backend services | Bearer token validated against the OIDC issuer; app role checked per route (ADR-0016) |
 | Service → database | SQL | Credentials from the deployment's secrets; TLS to the server |
 | Service → blob storage | File bytes | Provider credentials from the deployment's secrets; TLS for Azure Storage and S3 |
 | Browser → this service | Nothing | Browsers never reach the service. The Helm chart exposes it in the cluster only; its HTTP route is off by default, as in DKNet.Accounts.Api's chart |
@@ -17,17 +17,21 @@
 - The scaffold's demonstration sign-in (`EnableDemoAuthentication`) stays off in every deployment.
 - Tokens come from client credentials only. A user sign-in token is not a supported caller.
 - The issuer, audience and metadata address are settings (`Authentication:Schemes:Bearer:*`). Entra ID in a deployment; the local Keycloak under the AppHost.
-- The caller id is the first of the token's `client_id`, `azp` or `appid` claims. A valid token with none of them answers 401 (ADR-0013).
-- Each deployment turns on "Assignment required" for this API's app in Entra ID. Only the calling apps the operator assigns get a token. By default, Entra ID gives an app-only token to any app in the tenant.
-- The local Keycloak defines no scopes for this service.
+- The caller id is the first of the token's `client_id`, `azp` or `appid` claims. A valid token with none of them answers 401 (ADR-0016).
+- Operators define the 2 app roles `staticdata.read` and `staticdata.write` on this API's app registration in Microsoft Entra ID. They are app roles for applications.
+- Operators assign each calling app the roles it needs. Entra ID puts an app's assigned roles in the `roles` claim of its client-credentials token.
+- Each deployment keeps "Assignment required" on for this API's app in Entra ID. An app with no role assignment then gets no token at all. Without it, Entra ID gives an app-only token to any app in the tenant.
+- The local Keycloak under the AppHost defines both roles and maps them into the same `roles` claim. Its caller client holds both roles. It defines no scopes for this service.
 
 ### Authorization
 
-- Authentication only (ADR-0013). Any caller with a valid token may call every `/v1` route.
-- No scope or app-role check. No route answers 403 for a missing permission.
-- A caller that holds a token can read and delete every owner's files and settings. The requester accepted this risk.
+- 2 app roles, checked by the service (ADR-0016). The check comes right after the token check, before any input check.
+- Every `GET` route under `/v1` needs `staticdata.read`. Every `POST`, `PUT` and `DELETE` route under `/v1` needs `staticdata.write`.
+- `staticdata.write` does not include reading. An app that reads and writes holds both roles.
+- A valid token with a caller id but without the role the route needs answers 403, as problem details. Nothing changes.
+- No scope is checked. The roles are read from the `roles` claim only.
 - `/healthz` and `/healthz/detail` are anonymous (ADR-0015).
-- **The owner is a partition, not a permission.** A caller with a valid token can reach any owner's data by naming that owner. The service trusts its callers to name only owners they serve. This follows the requester's decision that every owner comes from the caller (ADR-0005).
+- **The owner is a partition, not a permission.** A caller with `staticdata.read` can read any owner's files and settings by naming that owner. A caller with `staticdata.write` can upload, change and delete them for any owner. The service trusts its callers to name only owners they serve. This follows the requester's decision that every owner comes from the caller (ADR-0005).
 - No route uses cookies, so no route needs an antiforgery token. `EnableAntiforgery` stays off, and the upload route turns off the antiforgery check ASP.NET Core adds to form-file routes.
 - Within one call, the owner filter is strict. It is not ignorable and denies all rows when no owner is set.
 
@@ -133,20 +137,21 @@ Integration tests run against real infrastructure (Policy 02):
 | The sweep deletes idempotency rows whose `ExpiresAt` has passed and keeps the rest | The database's idempotency store, both databases, rows with past and future `ExpiresAt` | The package never deletes rows |
 | File name with non-ASCII characters in `Content-Disposition` | Local provider | Real headers |
 | Failed insert after stored bytes deletes the bytes | Local provider, database made to fail | The cleanup path |
+| Every `/v1` route answers 403 to a token without its role and changes nothing: a `GET` with only `staticdata.write`, a `POST`, `PUT` or `DELETE` with only `staticdata.read`, and an upload with no role reserves no idempotency key. A token with no role and a bad `owner` gets 403, not 400. A token with both roles passes | Both databases, faked issuer | The role check runs before every input check |
 
-- The OIDC issuer is faked: a test signing key and test tokens with and without a caller claim. A token with no scope and no app role is accepted on every `/v1` route.
+- The OIDC issuer is faked: a test signing key and test tokens with and without a caller claim, holding `staticdata.read`, `staticdata.write`, both or no role in `roles`.
 - The Azure Storage and S3 adapters are not tested again here. DKNet's own Svc.BlobStorage tests cover them.
 
 ## Runtime architecture
 
 The planned runtime shape. The first docs ticket after the scaffold draws the code-derived diagram at `docs/diagrams/` and reports any difference from this one as a design question.
 
-![A calling service gets a token from the OIDC issuer with client credentials and calls the API edge over HTTPS; the edge checks the bearer token, the caller id and the owner, then hands the call to the files, file group or UI settings endpoints inside the per-replica container; the files endpoints stream bytes through the DKNet blob adapter to the one blob storage provider of the deployment, and every endpoint group reads and writes metadata through EF Core with the owner filter to the Postgres or SQL Server database.](diagrams/runtime.svg)
+![A calling service gets a token from the OIDC issuer with client credentials and calls the API edge over HTTPS; the edge checks the bearer token, the caller id, the app role the route needs and the owner, then hands the call to the files, file group or UI settings endpoints inside the per-replica container; the files endpoints stream bytes through the DKNet blob adapter to the one blob storage provider of the deployment, and every endpoint group reads and writes metadata through EF Core with the owner filter to the Postgres or SQL Server database.](diagrams/runtime.svg)
 
 Supporting detail:
 
 - **Ports:** the container listens on 8080 over HTTP. TLS ends before the pod.
-- **Auth:** bearer token from client credentials; no scope or app-role check; caller id from `client_id`, `azp` or `appid`; both health routes anonymous.
+- **Auth:** bearer token from client credentials; caller id from `client_id`, `azp` or `appid`; app role from `roles`: `staticdata.read` on `GET`, `staticdata.write` on `POST`, `PUT` and `DELETE`, 403 without it; both health routes anonymous.
 - **Owner:** the `owner` query parameter on every `/v1` route; the DKNet owner filter fails closed.
 - **Configuration:** `Database:Provider` = `Postgres` (default) or `SqlServer`; `BlobStorage:Provider` = `Local`, `AzureStorage` or `AwsS3`; `Files:AllowedExtensions`.
 - **Limits:** 50,000,000 bytes per file; 51,000,000-byte body and 300-second timeout on upload; 65,536 bytes per setting value.

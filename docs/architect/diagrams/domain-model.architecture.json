@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Domain Model (design revision 1)",
+    "title": "DKNet StaticData \u2014 Domain Model (design revision 3)",
     "output": "domain-model.html",
     "quality_profile": "showcase"
   },

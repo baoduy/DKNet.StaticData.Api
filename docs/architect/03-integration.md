@@ -22,12 +22,19 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 
 ### Rules for every `/v1` route
 
-- `Authorization: Bearer <token>` is required: a valid token for this API, with a caller id. No scope or app role is checked, and no route answers 403 for a missing permission (ADR-0013).
+- `Authorization: Bearer <token>` is required: a valid token for this API, with a caller id. A missing or invalid token answers 401. So does a token with none of `client_id`, `azp` or `appid`.
+- Every `GET` needs the app role `staticdata.read`. Every `POST`, `PUT` and `DELETE` needs `staticdata.write`. The service reads the roles from the token's `roles` claim (ADR-0016).
+- `staticdata.write` does not include reading. An app that reads and writes holds both roles.
+- A valid token with a caller id but without the role the route needs answers 403, as problem details. Nothing changes.
+- Order of answers: 401 for the token and the caller id, then 403 for the role, then every input check (`owner`, headers, body, `If-Match`). A 403 reserves no idempotency key.
 - The `owner` query parameter is required: 1 to 255 characters, not only white space, no control characters. It is URL-encoded, so any other character is allowed (ADR-0005).
 - The owner is never trimmed or case-folded. It compares exactly.
 - A record of another owner answers 404, the same as a record that does not exist.
 - Errors answer as problem details (`application/problem+json`).
-- Every record answer carries `version` in its body and `ETag: "<version>"` as a header. An idempotent replay is the one exception (see check 3 of the upload).
+- A JSON answer leaves out every field that has no value. It never writes such a field as `null`. This is the scaffold's JSON rule, and it holds on every route.
+- A JSON reader and the typed client read a missing field as empty.
+- The rule covers answer fields only. A request body may still send `null` where a route says so. A setting `value` is kept and returned exactly as sent, `null` values inside it included.
+- Every record answer carries `version` in its body and `ETag: "<version>"` as a header. An idempotent replay is the one exception (see check 4 of the upload).
 - Every `PUT` needs `If-Match: "<version>"`. No `If-Match` answers 428. A stale one answers 412 and changes nothing (ADR-0010).
 - List routes page with `pageNumber` and `pageSize`, as DKNet's list paging does, newest record first.
 - DKNet's default 3-month activity window is off: `DKNet:ListQuery:DefaultActivityWindowMonths` = 0. A list returns every matching record of the owner, however old.
@@ -38,27 +45,27 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 
 | Verb | Path | Purpose | Auth |
 |---|---|---|---|
-| POST | `/v1/files` | Upload one file. | Bearer token |
-| GET | `/v1/files` | List the owner's files; optional `groupId` filter. | Bearer token |
-| GET | `/v1/files/{fileId}` | Read one file's metadata. | Bearer token |
-| GET | `/v1/files/{fileId}/content` | Stream one file's bytes. | Bearer token |
-| PUT | `/v1/files/{fileId}/group` | Link the file to a group, or unlink it. | Bearer token |
-| DELETE | `/v1/files/{fileId}` | Delete the file's metadata and bytes. | Bearer token |
-| POST | `/v1/file-groups` | Create a file group. | Bearer token |
-| GET | `/v1/file-groups` | List the owner's file groups; optional `purpose` and `externalRef` filters, exact match. | Bearer token |
-| GET | `/v1/file-groups/{groupId}` | Read one file group. | Bearer token |
-| PUT | `/v1/file-groups/{groupId}` | Change name, purpose or external reference. | Bearer token |
-| DELETE | `/v1/file-groups/{groupId}` | Delete an empty file group. | Bearer token |
-| POST | `/v1/ui-settings` | Create one UI setting. | Bearer token |
-| GET | `/v1/ui-settings` | List the owner's settings; optional `appKey`, `settingKey` and `groupId` filters, exact match. | Bearer token |
-| GET | `/v1/ui-settings/{settingId}` | Read one UI setting. | Bearer token |
-| PUT | `/v1/ui-settings/{settingId}` | Replace a setting's type, group, value and schema version. | Bearer token |
-| DELETE | `/v1/ui-settings/{settingId}` | Delete one UI setting. | Bearer token |
-| POST | `/v1/ui-setting-groups` | Create a setting group. | Bearer token |
-| GET | `/v1/ui-setting-groups` | List the owner's setting groups; optional `appKey` filter. | Bearer token |
-| GET | `/v1/ui-setting-groups/{groupId}` | Read one setting group. | Bearer token |
-| PUT | `/v1/ui-setting-groups/{groupId}` | Change name or description. | Bearer token |
-| DELETE | `/v1/ui-setting-groups/{groupId}` | Delete an empty setting group. | Bearer token |
+| POST | `/v1/files` | Upload one file. | Bearer token, `staticdata.write` |
+| GET | `/v1/files` | List the owner's files; optional `groupId` filter. | Bearer token, `staticdata.read` |
+| GET | `/v1/files/{fileId}` | Read one file's metadata. | Bearer token, `staticdata.read` |
+| GET | `/v1/files/{fileId}/content` | Stream one file's bytes. | Bearer token, `staticdata.read` |
+| PUT | `/v1/files/{fileId}/group` | Link the file to a group, or unlink it. | Bearer token, `staticdata.write` |
+| DELETE | `/v1/files/{fileId}` | Delete the file's metadata and bytes. | Bearer token, `staticdata.write` |
+| POST | `/v1/file-groups` | Create a file group. | Bearer token, `staticdata.write` |
+| GET | `/v1/file-groups` | List the owner's file groups; optional `purpose` and `externalRef` filters, exact match. | Bearer token, `staticdata.read` |
+| GET | `/v1/file-groups/{groupId}` | Read one file group. | Bearer token, `staticdata.read` |
+| PUT | `/v1/file-groups/{groupId}` | Change name, purpose or external reference. | Bearer token, `staticdata.write` |
+| DELETE | `/v1/file-groups/{groupId}` | Delete an empty file group. | Bearer token, `staticdata.write` |
+| POST | `/v1/ui-settings` | Create one UI setting. | Bearer token, `staticdata.write` |
+| GET | `/v1/ui-settings` | List the owner's settings; optional `appKey`, `settingKey` and `groupId` filters, exact match. | Bearer token, `staticdata.read` |
+| GET | `/v1/ui-settings/{settingId}` | Read one UI setting. | Bearer token, `staticdata.read` |
+| PUT | `/v1/ui-settings/{settingId}` | Replace a setting's type, group, value and schema version. | Bearer token, `staticdata.write` |
+| DELETE | `/v1/ui-settings/{settingId}` | Delete one UI setting. | Bearer token, `staticdata.write` |
+| POST | `/v1/ui-setting-groups` | Create a setting group. | Bearer token, `staticdata.write` |
+| GET | `/v1/ui-setting-groups` | List the owner's setting groups; optional `appKey` filter. | Bearer token, `staticdata.read` |
+| GET | `/v1/ui-setting-groups/{groupId}` | Read one setting group. | Bearer token, `staticdata.read` |
+| PUT | `/v1/ui-setting-groups/{groupId}` | Change name or description. | Bearer token, `staticdata.write` |
+| DELETE | `/v1/ui-setting-groups/{groupId}` | Delete an empty setting group. | Bearer token, `staticdata.write` |
 | GET | `/healthz` | Liveness and readiness: status only. | Anonymous |
 | GET | `/healthz/detail` | Per-check health report. | Anonymous (ADR-0015) |
 
@@ -70,6 +77,7 @@ The scaffold's OpenAPI and Scalar pages stay behind its `EnableSwagger` flag, wh
 - One typed call per `/v1` route. No call for `/healthz` or `/healthz/detail`.
 - Every call takes the `owner`. Upload and file group create take the `X-Idempotency-Key`. Every update takes the `version` it sends as `If-Match`.
 - An error answer becomes a typed error with the status code and the problem details.
+- It reads a missing answer field as empty.
 - It never gets, keeps or logs a credential. The consuming app attaches its own bearer token.
 - It holds the public contract only, and no server code.
 - Coverage grows by slice: file routes in slice 2, file group routes in slice 3, UI settings routes in slice 4. Each slice updates it with its routes.
@@ -98,16 +106,17 @@ The request body limit on this route is 51,000,000 bytes: the 50,000,000-byte fi
 Checks, in order. The first failure answers and nothing is stored:
 
 1. Token and caller id — 401.
-2. `owner` — 400.
-3. `X-Idempotency-Key` missing, or not 1 to 255 letters, digits, `-` and `_` — 400. A repeat of a key this caller used for this owner on this route (ADR-0012):
+2. App role `staticdata.write` — 403.
+3. `owner` — 400.
+4. `X-Idempotency-Key` missing, or not 1 to 255 letters, digits, `-` and `_` — 400. A repeat of a key this caller used for this owner on this route (ADR-0012):
    - after the first upload answered 2xx, within 4 hours: replays the first answer — the same status (201) and the same JSON body, with no `Location` and no `ETag`. Nothing is stored. The caller takes `version` from the body.
    - while the first upload is still running: 409. Nothing is stored. The caller waits and repeats the same key.
    - after the first upload answered an error: 409 until that key's 330-second reservation ends, then the upload runs again. A caller that got an error answer sends a new key.
-4. Content type — 415.
-5. Exactly 1 `file` part and no unknown part — 400.
-6. File name: 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
-7. Size: 0 bytes answers 400. Over 50,000,000 bytes answers 413.
-8. `groupId`, when sent, names a file group of this owner — otherwise 404.
+5. Content type — 415.
+6. Exactly 1 `file` part and no unknown part — 400.
+7. File name: 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
+8. Size: 0 bytes answers 400. Over 50,000,000 bytes answers 413.
+9. `groupId`, when sent, names a file group of this owner — otherwise 404.
 
 Answer: 201 with `Location: /v1/files/{fileId}?owner=<owner>`, `ETag` and the file metadata.
 
@@ -121,9 +130,9 @@ File metadata (every file answer):
 | `contentType` | string | Derived from the extension. |
 | `sizeBytes` | integer | |
 | `checksum` | string | SHA-256, 64 lowercase hex characters. |
-| `groupId` | GUID or null | |
+| `groupId` | GUID | Left out when the file has no group. |
 | `version` | integer | |
-| `createdBy`, `createdOn`, `updatedBy`, `updatedOn` | string, date-time | Caller ids and UTC times. `updated*` are null until the first update. |
+| `createdBy`, `createdOn`, `updatedBy`, `updatedOn` | string, date-time | Caller ids and UTC times. `updatedBy` and `updatedOn` are left out until the first update. |
 
 The storage key is never in an answer.
 
@@ -227,10 +236,12 @@ This service consumes no events.
 
 ## Main flows
 
+Every flow starts with the token check (401) and the role check (403) from the rules for every `/v1` route. A failure there answers before any other step and changes nothing.
+
 ### Flow 1 — Upload a file
 
 1. The caller posts the form to `POST /v1/files?owner=<owner>` with a token and an idempotency key.
-2. The service runs checks 1 to 8 (Exposed API). A failure answers and stores nothing.
+2. The service runs checks 1 to 9 (Exposed API). A failure answers and stores nothing.
 3. The service makes a new `FileId` and the storage key `files/<FileId><extension>`.
 4. It reads the buffered upload once to compute the SHA-256 checksum and the size, then streams the bytes to blob storage.
 5. It inserts the `StoredFile` row with the owner, the checksum, the size and `Version` 1.
@@ -242,7 +253,7 @@ Failure paths:
 - The insert fails in step 5: the service deletes the stored bytes, best effort, and answers 503 or 500. If that delete fails too, it logs a warning with the file id and the storage key. Those bytes are orphaned and no caller can reach them.
 - The caller retries with the same key: while the first upload runs, 409; once it answered 201, the first status and body again, with no `Location` or `ETag`. No second file is stored.
 
-![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the token, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
+![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the token, the write role, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
 
 ### Flow 2 — Download a file
 
@@ -256,7 +267,7 @@ Failure paths:
 - The bytes are missing: 500 and an error log entry with the file id.
 - Blob storage is unreachable: 503.
 
-![The caller asks for a file's content with a bearer token and an owner; the service reads the metadata row through the owner filter, opens a read stream on blob storage under the storage key, streams the bytes back with the stored content type and file name, and answers 404 when the owner has no such file.](diagrams/download-file.svg)
+![The caller asks for a file's content with a bearer token and an owner; the service checks the token, the caller id, the read role and the owner, reads the metadata row through the owner filter, opens a read stream on blob storage under the storage key, streams the bytes back with the stored content type and file name, and answers 404 when the owner has no such file.](diagrams/download-file.svg)
 
 ### Flow 3 — Delete a file
 

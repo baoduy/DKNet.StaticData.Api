@@ -465,11 +465,11 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
         </g>
 
-        <g data-edge-from="edge" data-edge-to="files" data-edge-label="token, caller id, owner ok" data-edge-key="1" data-edge-id="auth">
+        <g data-edge-from="edge" data-edge-to="files" data-edge-label="token, caller id, write role, owner ok" data-edge-key="1" data-edge-id="auth">
           <path data-composition-edge-from="edge" data-composition-edge-to="files" data-composition-edge-id="auth" data-composition-points="349.25,200;534,200" d="M 349.25 200 L 534 200" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
         <g>
-          <rect x="349.825" y="180" width="183.6" height="18" rx="3" class="c-mask"/>
-          <text x="441.625" y="190" class="t-edge-security" font-size="11" text-anchor="middle">token, caller id, owner ok</text>
+          <rect x="310.225" y="180" width="262.79999999999995" height="18" rx="3" class="c-mask"/>
+          <text x="441.625" y="190" class="t-edge-security" font-size="11" text-anchor="middle">token, caller id, write role, owner ok</text>
         </g>
         </g>
 
@@ -563,8 +563,8 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <!-- Segment Labels -->
         <g data-graph-role="segment-label" data-segment-id="0">
-          <rect x="56" y="110" width="274" height="18" rx="3" class="c-mask"/>
-          <text x="62" y="123" class="t-dim" font-size="9" font-weight="600">Checks 1 to 8: token, owner, key, form, name, size</text>
+          <rect x="56" y="110" width="305.2" height="18" rx="3" class="c-mask"/>
+          <text x="62" y="123" class="t-dim" font-size="9" font-weight="600">Checks 1 to 9: token, role, owner, key, form, name, size</text>
         </g>
         <g data-graph-role="segment-label" data-segment-id="1">
           <rect x="56" y="258" width="42" height="18" rx="3" class="c-mask"/>
@@ -588,8 +588,8 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="143.5" y="122" class="t-muted" font-size="7" text-anchor="middle">M2M token</text>
         </g>
 
-        <g id="node-edge" data-node-id="edge" data-node-label="API edge" tabindex="0" role="button" aria-label="Focus API edge, JWT, caller id, Sequence participant" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT, caller id" data-node-context="Sequence participant">
-          <title>API edge · JWT, caller id · Sequence participant</title>
+        <g id="node-edge" data-node-id="edge" data-node-label="API edge" tabindex="0" role="button" aria-label="Focus API edge, JWT, caller id, role, Sequence participant" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT, caller id, role" data-node-context="Sequence participant">
+          <title>API edge · JWT, caller id, role · Sequence participant</title>
           <rect x="260.75" y="72" width="163" height="60" rx="6" class="c-mask"/>
           <rect x="260.75" y="72" width="163" height="60" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(266.75 78) scale(0.6875)">
@@ -597,7 +597,7 @@ rect.c-bg-rect { fill: var(--bg); }
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" x="342.25" y="108" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API edge</text>
-          <text x="342.25" y="122" class="t-muted" font-size="7" text-anchor="middle">JWT, caller id</text>
+          <text x="342.25" y="122" class="t-muted" font-size="7" text-anchor="middle">JWT, caller id, role</text>
         </g>
 
         <g id="node-files" data-node-id="files" data-node-label="Files endpoint" tabindex="0" role="button" aria-label="Focus Files endpoint, POST /v1/files, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="POST /v1/files" data-node-context="Sequence participant">
