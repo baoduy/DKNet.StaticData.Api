@@ -485,8 +485,8 @@ rect.c-bg-rect { fill: var(--bg); }
           <path data-edge-from="settings" data-edge-to="data" data-edge-label="settings" data-edge-key="10" data-edge-id="settings-data" data-composition-points="450,608;940,608;940,500" data-composition-crossover="halo" data-composition-independent="true" d="M 450 608 L 932 608 Q 940 608 940 600 L 940 500" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:11">
-          <path data-graph-role="automatic-crossover-underlay" d="M 1030 468 L 1130 468" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="data" data-edge-to="db" data-edge-label="SQL" data-edge-key="11" data-edge-id="data-db" data-composition-points="1030,468;1130,468" data-composition-crossover="halo" data-composition-independent="true" d="M 1030 468 L 1130 468" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 1030 468 L 1130 468" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="data" data-edge-to="db" data-edge-label="SQL" data-edge-key="11" data-edge-id="data-db" data-composition-points="1030,468;1130,468" data-composition-crossover="halo" data-composition-independent="true" d="M 1030 468 L 1130 468" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
 
         <!-- Components -->
@@ -651,7 +651,7 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
         <g data-edge-from="data" data-edge-to="db" data-edge-label="SQL" data-edge-key="11" data-edge-id="data-db">
           <rect x="1065" y="448" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="1080" y="458" class="t-edge-default" font-size="8" text-anchor="middle">SQL</text>
+          <text x="1080" y="458" class="t-edge-emphasis" font-size="8" text-anchor="middle">SQL</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->

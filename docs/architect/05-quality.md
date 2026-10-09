@@ -126,8 +126,9 @@ Integration tests run against real infrastructure (Policy 02):
 |---|---|---|
 | Every route, owner isolation, unique keys, foreign key refusals, `If-Match` and `Version` | Postgres and SQL Server in containers; every test runs on both | Collation, unique keys and concurrency differ between the 2 databases |
 | Owners and keys compare exactly (`A` and `a` are different) | Both databases | The SQL Server default collation ignores case |
+| A list with no `fromDate` or `toDate` returns a record created and last updated more than 3 months ago; Flow 5 finds and updates that setting | Both databases, audit times set in the past | DKNet's default 3-month window must stay off |
 | Upload, download, delete and the size and extension checks, at 50,000,000 bytes and 1 byte more | Local blob provider on a temporary folder | Real streaming and hashing |
-| Idempotent upload replay | The database's idempotency store | Real store |
+| Idempotent upload: replay after 201 (same body, no `Location` or `ETag`), 409 while the first runs, 1 file stored | The database's idempotency store, both databases | Real reservation and replay |
 | File name with non-ASCII characters in `Content-Disposition` | Local provider | Real headers |
 | Failed insert after stored bytes deletes the bytes | Local provider, database made to fail | The cleanup path |
 
@@ -147,4 +148,4 @@ Supporting detail:
 - **Owner:** the `owner` query parameter on every `/v1` route; the DKNet owner filter fails closed.
 - **Configuration:** `Database:Provider` = `Postgres` (default) or `SqlServer`; `BlobStorage:Provider` = `Local`, `AzureStorage` or `AwsS3`; `Files:AllowedExtensions`.
 - **Limits:** 50,000,000 bytes per file; 51,000,000-byte body and 300-second timeout on upload; 65,536 bytes per setting value.
-- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, scoped by caller and owner, kept 4 hours in the service's database.
+- **Idempotency:** `X-Idempotency-Key` on `POST /v1/files` and `POST /v1/file-groups`, scoped by caller and owner, `ConflictHandling` = `CachedResult`, 330-second in-flight reservation, kept 4 hours in the service's database.

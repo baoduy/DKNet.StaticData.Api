@@ -270,7 +270,8 @@
       "id": "data-db",
       "from": "data",
       "to": "db",
-      "label": "SQL"
+      "label": "SQL",
+      "variant": "emphasis"
     }
   ],
   "cards": [

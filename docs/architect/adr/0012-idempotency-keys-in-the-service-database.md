@@ -9,7 +9,14 @@
 - **Decision:**
   - `POST /v1/files` and `POST /v1/file-groups` require `X-Idempotency-Key`.
   - Keys are scoped by caller id and owner, through the package's key scope resolver, then by route and key. The route template alone does not hold the `owner` query parameter, so without the owner in the scope a key reused for another owner would replay the first owner's answer.
-  - A repeat within 4 hours, the package default, replays the first answer and changes nothing.
+  - Package settings, named here because 2 of them differ from the defaults:
+    - `ConflictHandling` = `CachedResult`. The default, `ConflictResponse`, answers every repeat with 409.
+    - `InFlightReservationTimeout` = 330 seconds: the upload's 300-second request timeout plus 30 seconds. The default, 30 seconds, ends the hold while a long upload still runs, so a repeat could store a second file.
+    - `Expiration` = 4 hours, the default.
+    - `IdempotencyHeaderKey` = `X-Idempotency-Key` and the key pattern (1 to 255 letters, digits, `-`, `_`), the defaults.
+  - Only a 2xx answer is kept. A repeat after a 2xx answer, within 4 hours, gets the first status and JSON body back. It carries no `Location` and no `ETag`: the package replays the status, body and content type only. Nothing changes.
+  - A repeat while the first request still holds its reservation answers 409, and nothing changes. The caller waits and repeats the same key.
+  - An error answer is not kept, and the reservation stays until its 330 seconds end. A repeat in that time answers 409; after it, the request runs again. A caller that got an error answer sends a new key.
   - Records live in the service's own database, in the store for its `Database:Provider`.
 - **Alternatives:**
   - *No idempotency.* Rejected: retried uploads would store duplicate 50 MB files.
@@ -17,4 +24,4 @@
   - *Idempotency on every POST.* Rejected: the settings routes are already guarded by their unique keys.
 - **Consequences:**
   - Easier: safe retries on uploads, with no new infrastructure.
-  - Harder: callers send a new key per upload; the replayed answer holds the owner and file name for 4 hours.
+  - Harder: callers send a new key per upload, handle 409 while the first upload runs, and read `version` from the body of a replay. The replayed answer holds the owner and file name for 4 hours.

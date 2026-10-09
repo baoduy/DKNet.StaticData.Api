@@ -92,7 +92,7 @@ These invariants hold for every aggregate:
   - A group is deleted only when no `UiSetting` is linked to it. Otherwise the delete is refused and nothing changes.
 - **References:** none. Settings point to the group, never the other way.
 
-Owners, app keys, setting keys and group names compare exactly, case and accents included, on both databases (ADR-0002). `Customer-1` and `customer-1` are 2 different owners.
+These columns compare exactly, case and accents included, on both databases (ADR-0002): `OwnedBy` on all 4 tables, `UiSetting.AppKey`, `UiSetting.SettingKey`, `SettingGroup.AppKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`. `Customer-1` and `customer-1` are 2 different owners.
 
 ![Four owned aggregates sit inside one owner partition: StoredFile references FileGroup by id and keeps its bytes in blob storage under its storage key, and UiSetting references SettingGroup by id with the same owner and app key.](diagrams/domain-model.svg)
 

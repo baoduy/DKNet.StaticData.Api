@@ -27,7 +27,8 @@ Each database has its own migrations. Both create the same tables, keys and inde
 
 Owners and keys compare exactly on both databases (ADR-0002):
 
-- On SQL Server, the columns `OwnedBy`, `AppKey`, `SettingKey` and both `Name` columns of the setting group use a binary collation (`Latin1_General_100_BIN2`).
+- The exact-compare columns are `OwnedBy` on all 4 tables, `UiSetting.AppKey`, `UiSetting.SettingKey`, `SettingGroup.AppKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`.
+- On SQL Server, these columns use the binary collation `Latin1_General_100_BIN2`.
 - On Postgres, the default comparison is already exact. No column uses a case-insensitive type.
 
 ## Entities
@@ -105,6 +106,7 @@ The foreign key from `StoredFile.GroupId` refuses a group delete while a file is
 | `BlobService:AzureStorage:ConnectionString`, `:ContainerName` | string | With `AzureStorage` | — | The package's Azure settings. The connection string is a secret. |
 | `BlobService:S3:ConnectionString`, `:BucketName`, `:AccessKey`, `:Secret`, `:RegionEndpointName`, `:ForcePathStyle` | string, boolean | With `AwsS3` | Region `us-east-1` | The package's S3 settings. `AccessKey` and `Secret` are secrets. |
 | `Database:Provider` | string | No | `Postgres` | `Postgres` or `SqlServer`, as in DKNet.Accounts.Api. |
+| `DKNet:ListQuery:DefaultActivityWindowMonths` | integer | Yes | 0 | DKNet's own default is 3 months. This service sets 0, so a list with no `fromDate` or `toDate` returns all records, however old. Never set above 0. |
 
 The file size limit is fixed at 50,000,000 bytes, the requester's 50 MB. It is not a setting.
 
@@ -112,8 +114,8 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 
 ### IdempotencyRecord (shape owned by DKNet.AspCore.Idempotency)
 
-- One record per caller, owner, route and key, kept for 4 hours, the package default.
-- It holds the first answer's status and body: file or group metadata. The body holds the owner and the file name, which are personal data.
+- One record per caller, owner, route and key. It is reserved for 330 seconds when the request starts, then kept for 4 hours once a 2xx answer is stored (ADR-0012).
+- It holds the first answer's status, body and content type: file or group metadata. It holds no headers. The body holds the owner and the file name, which are personal data.
 - The package creates and migrates its own tables.
 
 ## Retention
@@ -127,4 +129,4 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 | Idempotency record | 4 hours after the first answer | The idempotency package |
 | Orphaned bytes (a failed best-effort delete) | An operator removes them | The operator, using the warning log entry that names the storage key |
 
-No record expires on its own. Erasing all of an owner's data is the caller's job: it lists and deletes each record.
+No record expires on its own. Erasing all of an owner's data is the caller's job: it lists and deletes each record. The list routes have no activity window, so a list with no `fromDate` or `toDate` reaches every record of the owner, however old.

@@ -26,9 +26,11 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 - The owner is never trimmed or case-folded. It compares exactly.
 - A record of another owner answers 404, the same as a record that does not exist.
 - Errors answer as problem details (`application/problem+json`).
-- Every record answer carries `version` in its body and `ETag: "<version>"` as a header.
+- Every record answer carries `version` in its body and `ETag: "<version>"` as a header. An idempotent replay is the one exception (see check 3 of the upload).
 - Every `PUT` needs `If-Match: "<version>"`. No `If-Match` answers 428. A stale one answers 412 and changes nothing (ADR-0010).
 - List routes page with `pageNumber` and `pageSize`, as DKNet's list paging does, newest record first.
+- DKNet's default 3-month activity window is off: `DKNet:ListQuery:DefaultActivityWindowMonths` = 0. A list returns every matching record of the owner, however old.
+- Optional `fromDate` and `toDate` narrow a list to records created or updated in that range. They are DKNet's list parameters; a caller that sends neither gets all records.
 - JSON routes keep the scaffold's request body limit of 1,048,576 bytes and its 30-second request timeout.
 
 ### Routes
@@ -85,7 +87,10 @@ Checks, in order. The first failure answers and nothing is stored:
 
 1. Token and permission — 401 or 403.
 2. `owner` — 400.
-3. `X-Idempotency-Key` missing — 400. A repeat of a key this caller used for this owner on this route in the last 4 hours replays the first answer and stores nothing.
+3. `X-Idempotency-Key` missing, or not 1 to 255 letters, digits, `-` and `_` — 400. A repeat of a key this caller used for this owner on this route (ADR-0012):
+   - after the first upload answered 2xx, within 4 hours: replays the first answer — the same status (201) and the same JSON body, with no `Location` and no `ETag`. Nothing is stored. The caller takes `version` from the body.
+   - while the first upload is still running: 409. Nothing is stored. The caller waits and repeats the same key.
+   - after the first upload answered an error: 409 until that key's 330-second reservation ends, then the upload runs again. A caller that got an error answer sends a new key.
 4. Content type — 415.
 5. Exactly 1 `file` part and no unknown part — 400.
 6. File name: 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
@@ -217,13 +222,13 @@ This service consumes no events.
 3. The service makes a new `FileId` and the storage key `files/<FileId><extension>`.
 4. It streams the bytes to blob storage and computes the SHA-256 checksum and the size while it streams.
 5. It inserts the `StoredFile` row with the owner, the checksum, the size and `Version` 1.
-6. It answers 201 with the metadata, and the idempotency package keeps that answer for 4 hours.
+6. It answers 201 with the metadata. The idempotency package keeps that status and body for 4 hours.
 
 Failure paths:
 
 - Blob storage fails in step 4: the service deletes the storage key, best effort, and answers 503. No metadata exists.
 - The insert fails in step 5: the service deletes the stored bytes, best effort, and answers 503 or 500. If that delete fails too, it logs a warning with the file id and the storage key. Those bytes are orphaned and no caller can reach them.
-- The caller retries with the same key: it gets the first answer back. No second file is stored.
+- The caller retries with the same key: while the first upload runs, 409; once it answered 201, the first status and body again, with no `Location` or `ETag`. No second file is stored.
 
 ![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the permission, the owner, the extension and the size, streams the bytes to blob storage under a new storage key while it hashes them, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
 
@@ -262,7 +267,7 @@ The database's foreign key from `StoredFile.GroupId` refuses the delete too, so 
 
 ### Flow 5 — Save a UI layout
 
-1. The app backend reads the setting: `GET /v1/ui-settings?owner=<owner>&appKey=<app>&settingKey=<screen>`.
+1. The app backend reads the setting: `GET /v1/ui-settings?owner=<owner>&appKey=<app>&settingKey=<screen>`, with no `fromDate` or `toDate`. The activity window is off, so a setting last saved years ago is still found.
 2. No setting: it creates one with `POST /v1/ui-settings` and gets 201 with `ETag: "1"`.
 3. A setting: it replaces the value with `PUT /v1/ui-settings/{settingId}` and `If-Match` set to the version it read. It gets 200 and the new `ETag`.
 4. Two saves race on create: the second `POST` gets 409. The backend goes back to step 1.
