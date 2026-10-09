@@ -13,7 +13,8 @@ internal static class DatabaseConfig
 
     /// <summary>
     /// Reads the operator's database choice (<see cref="DatabaseProviders.Parse"/>): an unknown value throws
-    /// <see cref="InvalidOperationException"/>, so call it before anything is registered.
+    /// <see cref="InvalidOperationException"/>. <c>Program.cs</c> calls it once the configuration sources are loaded,
+    /// before the job dispatch and any app service registration.
     /// </summary>
     public static DatabaseProvider ResolveProvider(IConfiguration configuration) =>
         DatabaseProviders.Parse(configuration[SharedConsts.DatabaseProviderKey]);
