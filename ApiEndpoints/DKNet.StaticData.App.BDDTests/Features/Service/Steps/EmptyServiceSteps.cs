@@ -114,6 +114,7 @@ public sealed class EmptyServiceSteps
     {
         _ownedServer = await TestDatabaseServer.StartAsync(ToTestDatabase(database));
         _server = _ownedServer;
+        _choice ??= _server.Database == TestDatabase.SqlServer ? "SqlServer" : null;
         (_databaseName, _connectionString) = await _server.CreateEmptyDatabaseAsync();
         _runDbMigrationWhenAppStart = true;
         await StartHostAsync();
@@ -344,6 +345,7 @@ public sealed class EmptyServiceSteps
     private async Task UseNewDatabaseAsync(TestDatabase database)
     {
         _database = database;
+        _choice ??= database == TestDatabase.SqlServer ? "SqlServer" : null;
         _server = await TestDatabaseServer.SharedAsync(database);
         (_databaseName, _connectionString) = await _server.CreateEmptyDatabaseAsync();
     }
