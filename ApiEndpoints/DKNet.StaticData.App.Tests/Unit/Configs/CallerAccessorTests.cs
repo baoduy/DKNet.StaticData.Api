@@ -31,4 +31,8 @@ public class CallerAccessorTests
 
     [Fact]
     public void ACallWithNoUserHasNoCallerId() => CallerAccessor.Read(null).ShouldBeNull();
+
+    [Fact]
+    public void WorkOutsideACallHasNoCallerId() =>
+        new CallerAccessor(new Microsoft.AspNetCore.Http.HttpContextAccessor()).CallerId.ShouldBeNull();
 }

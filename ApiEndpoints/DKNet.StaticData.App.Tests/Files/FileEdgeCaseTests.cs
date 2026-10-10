@@ -46,6 +46,18 @@ public sealed class FileEdgeCaseTests(FilesHost hosts) : IClassFixture<FilesHost
         read.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"1\"");
     }
 
+    [Fact]
+    public async Task ABodyOverTheUploadLimitIsRefusedForItsSize()
+    {
+        var api = await hosts.OnAsync(TestDatabase.Postgres);
+
+        using var response = await api.UploadAsync(
+            Callers.OnboardingSvc, "customer-1", "scan.pdf", Bytes.Of(51_000_001), FilesApi.NewKey());
+
+        await response.ShouldBeProblemDetailsAsync(HttpStatusCode.RequestEntityTooLarge);
+        api.Host.LogCapture.Entries.ShouldContain(e => e.Message == "Upload refused: size, by onboarding-svc");
+    }
+
     [Theory]
     [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
     public async Task AFileNameThatIsOnlyAPathIsRefused(TestDatabase database)

@@ -31,7 +31,7 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
 
         foreach (var entity in modelBuilder.Model.GetEntityTypes().Where(e => typeof(IOwnedBy).IsAssignableFrom(e.ClrType)))
         {
-            entity.FindProperty(nameof(IOwnedBy.OwnedBy))?.SetCollation(ExactCollation);
+            entity.GetProperty(nameof(IOwnedBy.OwnedBy)).SetCollation(ExactCollation);
         }
     }
 

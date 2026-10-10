@@ -21,7 +21,7 @@ internal static class OwnerQuery
     public static bool TryRead(HttpRequest request, out string owner)
     {
         var values = request.Query[Name];
-        owner = values.Count == 1 ? values[0] ?? string.Empty : string.Empty;
+        owner = values.Count == 1 ? values.ToString() : string.Empty;
         return owner.Length <= MaxLength && !string.IsNullOrWhiteSpace(owner) && !owner.Any(char.IsControl);
     }
 
