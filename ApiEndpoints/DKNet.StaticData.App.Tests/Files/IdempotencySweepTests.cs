@@ -12,13 +12,16 @@ namespace DKNet.StaticData.App.Tests.Files;
 /// </summary>
 /// <remarks>
 /// The hour passes on the host's <see cref="TimeProvider"/>, never on the wall clock. The fake clock starts 1 hour
-/// behind the wall clock, so once it has moved on 1 hour both clocks agree on which records have expired — whether the
-/// sweep compares <c>ExpiresAt</c> with its injected clock or with the database's own time — and every seeded expiry
-/// is at least a minute from that moment.
+/// behind the wall clock. To delete records, it is set to the wall clock's "now", so both clocks agree on which records
+/// have expired — whether the sweep compares <c>ExpiresAt</c> with its injected clock or with the database's own time —
+/// and every seeded expiry is at least a minute from that moment. To retry, it moves exactly 1 hour, then 59 minutes,
+/// then 1 minute. The service retries a database call that fails (<c>EnableRetryOnFailure</c>), so a sweep against a
+/// stopped database may take minutes to give up.
 /// </remarks>
 public sealed class IdempotencySweepTests(FilesHost hosts) : IClassFixture<FilesHost>
 {
     private static readonly TimeSpan SweepWait = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan FailedSweepWait = TimeSpan.FromMinutes(4);
 
     /// <summary>Scenario Outline: The hourly sweep deletes expired idempotency records.</summary>
     [Theory]
@@ -33,7 +36,7 @@ public sealed class IdempotencySweepTests(FilesHost hosts) : IClassFixture<Files
         await IdempotencyRecords.InsertAsync(api, "still-valid", sweepAt.AddHours(1));
         (await IdempotencyRecords.KeysAsync(api)).ShouldBe(["expired-1", "expired-2", "still-valid"], ignoreOrder: true);
 
-        clock.Advance(TimeSpan.FromHours(1)); // the hourly sweep runs
+        clock.SetUtcNow(sweepAt); // an hour or more has passed: the hourly sweep runs
 
         (await Eventually.IsTrueAsync(() => DeletedTwo(api), SweepWait))
             .ShouldBeTrue("no Information log entry says the sweep deleted 2 records");
@@ -52,15 +55,17 @@ public sealed class IdempotencySweepTests(FilesHost hosts) : IClassFixture<Files
 
         clock.Advance(TimeSpan.FromHours(1)); // the hourly sweep runs
 
-        (await Eventually.IsTrueAsync(() => Failures(api) == failuresBefore + 1, SweepWait))
+        (await Eventually.IsTrueAsync(() => Failures(api) == failuresBefore + 1, FailedSweepWait))
             .ShouldBeTrue("no Warning log entry with the exception type was written for the failed sweep");
+        // a sweep may log its warning before it schedules the next run; let it schedule before the clock moves on
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         clock.Advance(TimeSpan.FromMinutes(59));
         (await Eventually.IsTrueAsync(() => Failures(api) > failuresBefore + 1, TimeSpan.FromSeconds(2)))
             .ShouldBeFalse("the sweep ran again before the hour was over");
 
         clock.Advance(TimeSpan.FromMinutes(1)); // the next sweep runs 1 hour later
-        (await Eventually.IsTrueAsync(() => Failures(api) == failuresBefore + 2, SweepWait))
+        (await Eventually.IsTrueAsync(() => Failures(api) == failuresBefore + 2, FailedSweepWait))
             .ShouldBeTrue("the sweep did not run again 1 hour after the failed one");
     }
 

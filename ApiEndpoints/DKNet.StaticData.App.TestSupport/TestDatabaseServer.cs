@@ -139,15 +139,16 @@ public sealed class TestDatabaseServer : IAsyncDisposable
     }
 
     /// <summary>
-    /// Deletes every row of every table but the migration history tables (EF Core's own and the idempotency store's
-    /// <c>migrate</c> schema), so a host on this database starts its next test from empty tables without migrating again.
+    /// Deletes every row of every table outside the <c>migrate</c> schema, where the service and the idempotency store
+    /// keep their migration history, so a host on this database starts its next test from empty tables without
+    /// migrating again.
     /// </summary>
     public async Task DeleteAllRowsAsync(string connectionString)
     {
         foreach (var table in await ListTablesAsync(connectionString))
         {
             var (schema, name) = (table[..table.IndexOf('.', StringComparison.Ordinal)], table[(table.IndexOf('.', StringComparison.Ordinal) + 1)..]);
-            if (schema == "migrate" || name.Contains("MigrationsHistory", StringComparison.Ordinal))
+            if (schema == "migrate")
             {
                 continue;
             }
