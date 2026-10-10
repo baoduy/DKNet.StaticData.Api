@@ -26,6 +26,14 @@ public class IdempotencyKeyScopeTests
         second.ShouldBe("3:a:b:c");
     }
 
+    [Fact]
+    public void ACallWithNoCallerIdIsScopedByTheOwnerAlone()
+    {
+        var context = new DefaultHttpContext { Request = { QueryString = QueryString.Create("owner", "customer-1") } };
+
+        IdempotencyKeyScope.Resolve(context).ShouldBe("0::customer-1");
+    }
+
     private static HttpContext Call(string callerId, string owner) =>
         new DefaultHttpContext
         {
