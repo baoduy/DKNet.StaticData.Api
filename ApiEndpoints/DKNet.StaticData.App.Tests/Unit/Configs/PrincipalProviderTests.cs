@@ -125,8 +125,8 @@ public class PrincipalProviderTests
         context.Request.QueryString = new QueryString("?owner=Customer-1");
         var provider = CreateProvider(context);
 
-        provider.GetOwnershipKey().ShouldBe("Customer-1");
         provider.GetCurrentUser().ShouldBe("onboarding-svc");
+        provider.GetOwnershipKey().ShouldBe("Customer-1");
         provider.ProfileId.ShouldBe(Guid.Empty);
     }
 
