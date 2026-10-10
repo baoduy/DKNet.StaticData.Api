@@ -24,7 +24,8 @@ internal sealed class ProblemDetailsForbiddenHandler : IAuthorizationMiddlewareR
         AuthorizationPolicy policy,
         PolicyAuthorizationResult authorizeResult)
     {
-        if (!authorizeResult.Forbidden || context.User.Identity?.IsAuthenticated != true)
+        // Forbidden is only ever set for an authenticated caller; an unauthenticated one is challenged (401).
+        if (!authorizeResult.Forbidden)
         {
             return _default.HandleAsync(next, context, policy, authorizeResult);
         }

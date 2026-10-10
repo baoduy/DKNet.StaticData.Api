@@ -128,11 +128,7 @@ internal sealed class FileV1Endpoint : IEndpointConfig
         }
         catch (InvalidDataException)
         {
-            return null;
-        }
-        catch (IOException ex) when (ex is not BadHttpRequestException)
-        {
-            // A multipart body with no section ends before its first boundary.
+            // Not a multipart body, such as one with no section at all.
             return null;
         }
     }
