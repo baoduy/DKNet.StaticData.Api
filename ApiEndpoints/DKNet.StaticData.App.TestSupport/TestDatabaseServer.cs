@@ -117,14 +117,51 @@ public sealed class TestDatabaseServer : IAsyncDisposable
         ? new NpgsqlConnection(connectionString)
         : new SqlConnection(connectionString);
 
-    private async Task ExecuteAsync(string connectionString, string sql)
+    /// <summary>
+    /// Runs <paramref name="sql"/> on the database, with each <c>(name, value)</c> pair bound as a parameter the SQL
+    /// names as <c>@name</c>. Returns the number of rows it changed.
+    /// </summary>
+    public async Task<int> ExecuteAsync(string connectionString, string sql, params (string Name, object Value)[] parameters)
     {
         await using var connection = Connect(connectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
-        await command.ExecuteNonQueryAsync();
+        foreach (var (name, value) in parameters)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
+        }
+
+        return await command.ExecuteNonQueryAsync();
     }
+
+    /// <summary>
+    /// Deletes every row of every table but the migration history tables (EF Core's own and the idempotency store's
+    /// <c>migrate</c> schema), so a host on this database starts its next test from empty tables without migrating again.
+    /// </summary>
+    public async Task DeleteAllRowsAsync(string connectionString)
+    {
+        foreach (var table in await ListTablesAsync(connectionString))
+        {
+            var (schema, name) = (table[..table.IndexOf('.', StringComparison.Ordinal)], table[(table.IndexOf('.', StringComparison.Ordinal) + 1)..]);
+            if (schema == "migrate" || name.Contains("MigrationsHistory", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            await ExecuteAsync(connectionString, $"DELETE FROM {Quote(schema)}.{Quote(name)}");
+        }
+    }
+
+    /// <summary>Quotes an identifier the way this server's SQL needs.</summary>
+    public string Quote(string identifier) => Database == TestDatabase.Postgres ? $"\"{identifier}\"" : $"[{identifier}]";
+
+    /// <summary>The first column of every row <paramref name="sql"/> returns, as text.</summary>
+    public Task<IReadOnlyList<string>> QueryTextsAsync(string connectionString, string sql) =>
+        QueryNamesAsync(connectionString, sql);
 
     private async Task<IReadOnlyList<string>> QueryNamesAsync(string connectionString, string sql)
     {

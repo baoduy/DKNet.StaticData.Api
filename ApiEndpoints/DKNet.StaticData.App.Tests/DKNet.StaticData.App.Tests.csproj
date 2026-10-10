@@ -21,6 +21,7 @@
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory"/>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
         <PackageReference Include="NetArchTest.Rules"/>
         <PackageReference Include="AutoBogus"/>
@@ -44,6 +45,7 @@
     <ItemGroup>
         <ProjectReference Include="..\DKNet.StaticData.Api\DKNet.StaticData.Api.csproj" />
         <ProjectReference Include="..\DKNet.StaticData.App.TestSupport\DKNet.StaticData.App.TestSupport.csproj" />
+        <ProjectReference Include="..\DKNet.StaticData.Client\DKNet.StaticData.Client.csproj" />
     </ItemGroup>
 
 </Project>
