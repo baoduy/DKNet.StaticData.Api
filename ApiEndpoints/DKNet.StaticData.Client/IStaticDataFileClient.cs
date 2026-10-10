@@ -8,7 +8,10 @@ namespace DKNet.StaticData.Client;
 /// </summary>
 public interface IStaticDataFileClient
 {
-    /// <summary><c>POST /v1/files</c>: uploads one file for <paramref name="owner"/>.</summary>
+    /// <summary>
+    /// <c>POST /v1/files</c>: uploads one file for <paramref name="owner"/>, sending <paramref name="idempotencyKey"/> as
+    /// the <c>X-Idempotency-Key</c> header. The client reads <paramref name="content"/> to its end and disposes it.
+    /// </summary>
     Task<StaticDataFile> UploadAsync(
         string owner,
         string idempotencyKey,
