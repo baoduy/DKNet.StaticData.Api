@@ -1,3 +1,5 @@
+using DKNet.AspCore.Idempotency;
+using DKNet.AspCore.Idempotency.Store;
 using DKNet.EfCore.Hooks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -5,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DKNet.StaticData.Infra.Contexts;
@@ -18,6 +21,9 @@ namespace DKNet.StaticData.App.TestSupport;
 /// </summary>
 public abstract class TestApiFactoryBase(string? dbName = null) : WebApplicationFactory<DKNet.StaticData.Api.Program>
 {
+    private const string AppDbVariable = "ConnectionStrings__AppDb";
+    private const string InMemoryConnectionString = "UseInMemory";
+
     private readonly string _dbName = dbName ?? $"tests-{Guid.NewGuid():N}";
 
     /// <summary>Captures log lines written by the app during a scenario/test, for asserting on log output.</summary>
@@ -32,6 +38,25 @@ public abstract class TestApiFactoryBase(string? dbName = null) : WebApplication
     }
 
     /// <summary>
+    /// <c>Program</c> registers the idempotency store with the <c>AppDb</c> connection string before the configuration
+    /// added through the factory is merged (see <see cref="TestHost"/>), and the store refuses an empty one: the value
+    /// arrives as an environment variable while the host builds, and is restored after.
+    /// </summary>
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var previous = Environment.GetEnvironmentVariable(AppDbVariable);
+        Environment.SetEnvironmentVariable(AppDbVariable, InMemoryConnectionString);
+        try
+        {
+            return base.CreateHost(builder);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(AppDbVariable, previous);
+        }
+    }
+
+    /// <summary>
     /// Base <c>FeatureManagement</c>/connection-string overrides both suites need. Override
     /// <see cref="AddFeatureOverrides" /> to extend rather than replacing this set.
     /// </summary>
@@ -42,7 +67,7 @@ public abstract class TestApiFactoryBase(string? dbName = null) : WebApplication
             ["FeatureManagement:RunDbMigrationWhenAppStart"] = "false",
             ["FeatureManagement:EnableSwagger"] = "false",
             ["FeatureManagement:EnableAzureAppConfig"] = "false",
-            ["ConnectionStrings:AppDb"] = "UseInMemory"
+            ["ConnectionStrings:AppDb"] = InMemoryConnectionString
         };
         AddFeatureOverrides(settings);
         return settings;
@@ -70,6 +95,19 @@ public abstract class TestApiFactoryBase(string? dbName = null) : WebApplication
         services.AddDbContextWithHook<CoreDbContext>((_, options) => options
             .UseInMemoryDatabase(_dbName)
             .UseAutoConfigModel([typeof(CoreDbContext).Assembly]));
+
+        // The service keeps idempotency records in its SQL database, migrated by a hosted service at start; with no
+        // SQL database here, the package's own in-memory store takes its place, and nothing migrates.
+        services.RemoveAll<IIdempotencyKeyStore>();
+        foreach (var migration in services
+                     .Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType?.Name
+                         .StartsWith("IdempotencyMigrationHostedService", StringComparison.Ordinal) == true)
+                     .ToArray())
+        {
+            services.Remove(migration);
+        }
+
+        services.AddIdempotentKey();
     }
 
     public IServiceScope CreateScope() => Services.CreateScope();

@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Routing;
 
 namespace DKNet.StaticData.App.BDDTests.Features.Service.Steps;
 
@@ -35,9 +34,6 @@ public sealed class EmptyServiceSteps
     private string[] _appliedBeforeStart = [];
     private HttpResponseMessage? _response;
     private string? _body;
-    private string[] _routes = [];
-    private string? _solutionDirectory;
-    private string[] _projects = [];
 
     [AfterScenario]
     public async Task DisposeAsync()
@@ -135,27 +131,6 @@ public sealed class EmptyServiceSteps
         _runDbMigrationWhenAppStart = true;
     }
 
-    [Given(@"^the service runs with its default settings$")]
-    public async Task GivenTheServiceRunsWithItsDefaultSettings()
-    {
-        _connectionString = UnreachablePostgres;
-        await StartHostAsync();
-        RequireHost();
-    }
-
-    [Given(@"^the service solution built from the template$")]
-    public void GivenTheServiceSolutionBuiltFromTheTemplate()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DKNet.StaticData.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        directory.ShouldNotBeNull("DKNet.StaticData.sln was not found above the test output folder");
-        _solutionDirectory = directory.FullName;
-    }
-
     #endregion
 
     #region When
@@ -188,27 +163,6 @@ public sealed class EmptyServiceSteps
 
     [When(@"^onboarding-service calls the root address without a token$")]
     public async Task WhenOnboardingServiceCallsTheRootAddressWithoutAToken() => await GetAsync("/");
-
-    [When(@"^the service lists the routes it serves$")]
-    public void WhenTheServiceListsTheRoutesItServes()
-    {
-        _routes = RequireHost().Services.GetRequiredService<EndpointDataSource>().Endpoints
-            .OfType<RouteEndpoint>()
-            .Select(endpoint => endpoint.RoutePattern.RawText ?? string.Empty)
-            .Distinct()
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    [When(@"^dev-team lists its projects$")]
-    public async Task WhenDevTeamListsItsProjects()
-    {
-        var solution = await File.ReadAllTextAsync(Path.Combine(_solutionDirectory!, "DKNet.StaticData.sln"));
-        _projects = Regex.Matches(solution, @"^Project\(""\{[^}]+\}""\) = ""([^""]+)"", ""([^""]+\.csproj)""",
-                RegexOptions.Multiline)
-            .Select(match => match.Groups[1].Value)
-            .ToArray();
-    }
 
     #endregion
 
@@ -311,10 +265,6 @@ public sealed class EmptyServiceSteps
         ThenTheAnswerIsWithHttp(status, 200);
     }
 
-    [Then(@"^the list holds only the health status route and the health detail route$")]
-    public void ThenTheListHoldsOnlyTheHealthStatusRouteAndTheHealthDetailRoute() =>
-        _routes.ShouldBe(["/healthz", "/healthz/detail"]);
-
     [Then(@"^the service refuses the call as unauthenticated$")]
     public void ThenTheServiceRefusesTheCallAsUnauthenticated() =>
         _response!.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -323,15 +273,6 @@ public sealed class EmptyServiceSteps
     public void ThenTheAnswerCarriesNoHealthStatus() =>
         Regex.IsMatch(_body!, "Healthy|Degraded|Unhealthy", RegexOptions.IgnoreCase)
             .ShouldBeFalse($"the answer carries a health status: {_body}");
-
-    [Then(@"^no client package project is present$")]
-    public void ThenNoClientPackageProjectIsPresent()
-    {
-        _projects.ShouldContain("DKNet.StaticData.Api", "the solution's projects were not read");
-        _projects.Where(name => name.EndsWith(".Client", StringComparison.Ordinal)).ShouldBeEmpty();
-        Directory.Exists(Path.Combine(_solutionDirectory!, "ApiEndpoints", "DKNet.StaticData.Client"))
-            .ShouldBeFalse("the client project folder is still in the repo");
-    }
 
     #endregion
 

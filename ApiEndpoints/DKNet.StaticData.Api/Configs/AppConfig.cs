@@ -1,5 +1,4 @@
-﻿using DKNet.AspCore.Idempotency;
-using DKNet.StaticData.Api.Configs.Auth;
+﻿using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
 using DKNet.StaticData.Api.Configs.RateLimits;
 using DKNet.StaticData.Api.Configs.Swagger;
@@ -65,8 +64,8 @@ internal static class AppConfig
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
-        //InMemory store
-        services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
+        services.AddIdempotencyConfig(configuration, database)
+            .AddFileStorage(configuration);
 
         return services
             .AddCrosConfig(configuration)
@@ -87,6 +86,9 @@ internal static class AppConfig
             .UseHttpsConfig()
             .UseHealthzConfig();
 
+        // An error answer that carries no body of its own — the bearer challenge's 401, a 404 for an address the
+        // service does not serve, the request timeout's 504 — still answers as problem details (spec DRK-2206 §3).
+        app.UseStatusCodePages();
         app.UseRouting();
         app.UseRequestBoundsConfig();
         app.UseRateLimitConfig();

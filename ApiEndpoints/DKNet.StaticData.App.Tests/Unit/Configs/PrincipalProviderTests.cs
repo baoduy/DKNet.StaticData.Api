@@ -76,6 +76,14 @@ public class PrincipalProviderTests
     }
 
     [Fact]
+    public void CurrentUser_AnonymousCaller_IsSystemAccount()
+    {
+        var provider = CreateProvider(CreateAnonymousContext());
+
+        provider.GetCurrentUser().ShouldBe(SharedConsts.SystemAccount);
+    }
+
+    [Fact]
     public void Email_AuthenticatedWithoutEmailClaim_IsEmpty()
     {
         var context = CreateAuthenticatedContext([new Claim(ClaimTypes.NameIdentifier, "client-credentials-sub")]);
@@ -116,6 +124,37 @@ public class PrincipalProviderTests
 
         provider.UserName.ShouldBe("Jane Doe");
         provider.Email.ShouldBe("jane.doe@example.com");
+    }
+
+    [Fact]
+    public void OwnershipKeyAndCurrentUser_AuthenticatedCaller_AreTheOwnerQueryAndTheCallerId()
+    {
+        var context = CreateAuthenticatedContext([new Claim("client_id", "onboarding-svc"), new Claim("oid", "user-55")]);
+        context.Request.QueryString = new QueryString("?owner=Customer-1");
+        var provider = CreateProvider(context);
+
+        provider.GetCurrentUser().ShouldBe("onboarding-svc");
+        provider.GetOwnershipKey().ShouldBe("Customer-1");
+        provider.ProfileId.ShouldBe(Guid.Empty);
+    }
+
+    [Fact]
+    public void OwnershipKey_AuthenticatedCallerWithAMalformedOwner_IsNone()
+    {
+        var context = CreateAuthenticatedContext([new Claim("client_id", "onboarding-svc")]);
+        context.Request.QueryString = new QueryString("?owner=%20%20");
+        var provider = CreateProvider(context);
+
+        provider.GetOwnershipKey().ShouldBeNull();
+    }
+
+    [Fact]
+    public void ProfileId_AuthenticatedCallerWithAGuidSubject_IsThatSubject()
+    {
+        var subject = Guid.NewGuid();
+        var provider = CreateProvider(CreateAuthenticatedContext([new Claim("sub", subject.ToString())]));
+
+        provider.ProfileId.ShouldBe(subject);
     }
 
     #endregion

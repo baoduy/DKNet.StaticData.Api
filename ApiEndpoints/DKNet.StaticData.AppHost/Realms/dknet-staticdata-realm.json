@@ -1,0 +1,88 @@
+{
+  "realm": "dknet-staticdata",
+  "displayName": "DKNet StaticData local issuer (AppHost only)",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "staticdata.read"
+      },
+      {
+        "name": "staticdata.write"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "basic",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "dknet-staticdata-caller",
+      "name": "DKNet StaticData local caller",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dknet-staticdata-caller-demo-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "staticdata-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "dknet-staticdata-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "basic"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-dknet-staticdata-caller",
+      "enabled": true,
+      "serviceAccountClientId": "dknet-staticdata-caller",
+      "realmRoles": [
+        "staticdata.read",
+        "staticdata.write"
+      ]
+    }
+  ]
+}

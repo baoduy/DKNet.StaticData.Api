@@ -13,9 +13,27 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
 
     #endregion
 
+    private const string ExactCollation = "Latin1_General_100_BIN2";
+
     private readonly IDataOwnerProvider? _dataKeyProvider = dataKeyProviders?.FirstOrDefault();
 
     #region Methods
+
+    /// <summary>
+    /// On SQL Server, every owner column compares exactly, as it does on Postgres by default (design <c>04-data.md</c>,
+    /// ADR-0002): the binary collation <see cref="ExactCollation"/>. Runs after DKNet's auto-config has applied every
+    /// entity configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
+    /// </summary>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        if (!this.IsSqlServer()) return;
+
+        foreach (var entity in modelBuilder.Model.GetEntityTypes().Where(e => typeof(IOwnedBy).IsAssignableFrom(e.ClrType)))
+        {
+            entity.GetProperty(nameof(IOwnedBy.OwnedBy)).SetCollation(ExactCollation);
+        }
+    }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {

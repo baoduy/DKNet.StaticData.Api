@@ -19,6 +19,8 @@
         <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
         <PackageReference Include="DKNet.AspCore.Extensions" />
         <PackageReference Include="DKNet.AspCore.Idempotency" />
+        <PackageReference Include="DKNet.AspCore.Idempotency.MsSqlStore" />
+        <PackageReference Include="DKNet.AspCore.Idempotency.NpgsqlStore" />
         <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
