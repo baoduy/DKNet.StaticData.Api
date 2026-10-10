@@ -1,7 +1,6 @@
 using DKNet.AspCore.Idempotency;
 using DKNet.AspCore.Idempotency.MsSqlStore;
 using DKNet.AspCore.Idempotency.NpgsqlStore;
-using DKNet.StaticData.Api.ApiEndpoints.Files;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 namespace DKNet.StaticData.Api.Configs;
@@ -10,7 +9,7 @@ namespace DKNet.StaticData.Api.Configs;
 /// Idempotency records in the service's own database, in the DKNet store for its <see cref="DatabaseProvider" />
 /// (ADR-0012). The package creates and migrates its own table; this service's hourly sweep deletes expired rows.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Registration only; the key scope logic is IdempotencyKeyScope, which is measured.")]
 internal static class IdempotencyConfig
 {
     #region Methods
@@ -43,19 +42,7 @@ internal static class IdempotencyConfig
         // The upload's 300-second request timeout plus 30 seconds: the hold never ends while an upload still runs.
         options.InFlightReservationTimeout = TimeSpan.FromSeconds(330);
         options.Expiration = TimeSpan.FromHours(4);
-        options.KeyScopeResolver = Scope;
-    }
-
-    /// <summary>
-    /// A key is scoped by the caller id and the owner, then by route and key: the route template does not hold the
-    /// owner, so without it a key reused for another owner would replay the first owner's answer. The caller id is
-    /// length-prefixed, so no caller id and owner pair can spell another pair's scope. The package keeps only a hash.
-    /// </summary>
-    private static string Scope(HttpContext context)
-    {
-        var callerId = CallerAccessor.Read(context.User) ?? string.Empty;
-        OwnerQuery.TryRead(context.Request, out var owner);
-        return $"{callerId.Length}:{callerId}:{owner}";
+        options.KeyScopeResolver = IdempotencyKeyScope.Resolve;
     }
 
     #endregion

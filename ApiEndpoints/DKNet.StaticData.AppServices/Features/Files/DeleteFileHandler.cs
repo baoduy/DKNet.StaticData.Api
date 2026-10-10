@@ -1,6 +1,7 @@
 using DKNet.EfCore.Specifications.Extensions;
 using DKNet.EfCore.Specifications.Repositories;
 using DKNet.Svc.BlobStorage.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace DKNet.StaticData.AppServices.Features.Files;
@@ -26,7 +27,16 @@ public sealed class DeleteFileHandler(
         }
 
         repository.Delete(file);
-        await repository.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await repository.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another call deleted the row between the read and this save: the file no longer exists.
+            return Result.Fail(new FileError(FileErrorKind.NotFound, "The file does not exist."));
+        }
+
         await blobs.TryDeleteAsync(file, logger);
 
         FileLog.FileDeleted(logger, file.Id, caller.CallerId);

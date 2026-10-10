@@ -41,7 +41,9 @@ internal sealed class FileV1Endpoint : IEndpointConfig
 
     public void Map(RouteGroupBuilder group)
     {
-        // Group filters wrap each route's own filters: the owner is checked before the idempotency key.
+        // Group filters wrap each route's own filters: the caller's log scope wraps everything, and the owner is
+        // checked before the idempotency key.
+        group.AddEndpointFilter<CallerLogScopeFilter>();
         group.AddEndpointFilter<DependencyFailureFilter>();
         group.AddEndpointFilter<OwnerFilter>();
 
