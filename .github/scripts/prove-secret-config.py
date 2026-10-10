@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import secrets
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -34,6 +35,7 @@ assert container["readinessProbe"]["httpGet"]["path"] == "/healthz"
 password = secrets.token_hex(24)
 name = "staticdata-secret-proof-" + secrets.token_hex(6)
 app = None
+local_folder = tempfile.TemporaryDirectory(prefix="staticdata-secret-proof-")
 try:
     run("docker", "run", "--detach", "--name", name, "--publish", "127.0.0.1::5432",
         "--env", "POSTGRES_PASSWORD=" + password, "postgres:16-alpine")
@@ -52,6 +54,8 @@ try:
     env = os.environ.copy()
     env.update(config)
     env.update(secret_data)
+    # The chart's writable PVC is represented by a disposable writable directory locally.
+    env["BlobStorage__LocalFolder__RootFolder"] = local_folder.name
     # Use an ephemeral local HTTP port for the process, just as the pod uses 8080.
     import socket
     with socket.socket() as listener:
@@ -85,3 +89,4 @@ finally:
             app.kill()
             app.wait()
     subprocess.run(["docker", "rm", "--force", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    local_folder.cleanup()

@@ -10,6 +10,9 @@ api:
   deployment:
     enabled: true
     replicaCount: 1
+    # Avoid overlapping pods writing to the single-replica Local volume during updates.
+    strategy:
+      type: Recreate
     ports:
       http: 8080
     liveness: /healthz
@@ -20,6 +23,27 @@ api:
     ASPNETCORE_ENVIRONMENT: Production
     ASPNETCORE_HTTP_PORTS: "8080"
     Database__Provider: Postgres
+    BlobStorage__Provider: Local
+    BlobStorage__LocalFolder__RootFolder: /var/lib/staticdata
+    BlobService__AzureStorage__ContainerName: staticdata
+    BlobService__S3__ConnectionString: https://s3.amazonaws.com
+    BlobService__S3__BucketName: staticdata
+    BlobService__S3__RegionEndpointName: us-east-1
+    BlobService__S3__ForcePathStyle: "false"
+    Files__AllowedExtensions__0: .pdf
+    Files__AllowedExtensions__1: .png
+    Files__AllowedExtensions__2: .jpg
+    Files__AllowedExtensions__3: .jpeg
+    Files__AllowedExtensions__4: .gif
+    Files__AllowedExtensions__5: .txt
+    Files__AllowedExtensions__6: .csv
+    Files__AllowedExtensions__7: .json
+    Files__AllowedExtensions__8: .xml
+    Files__AllowedExtensions__9: .doc
+    Files__AllowedExtensions__10: .docx
+    Files__AllowedExtensions__11: .xls
+    Files__AllowedExtensions__12: .xlsx
+    Files__AllowedExtensions__13: .zip
     FeatureManagement__RequireAuthorization: "true"
     FeatureManagement__EnableDemoAuthentication: "false"
     FeatureManagement__EnableHealthCheck: "true"
@@ -29,7 +53,8 @@ api:
     Authentication__Schemes__Bearer__MetadataAddress: https://login.microsoftonline.com/REPLACE-ME-TENANT/v2.0/.well-known/openid-configuration
     Authentication__Schemes__Bearer__ValidAudiences__0: api://REPLACE-ME-CLIENT
     Authentication__Schemes__Bearer__ValidIssuer: https://sts.windows.net/REPLACE-ME-TENANT/
-  # Required existing Secret in the release namespace. Its AppDb key uses .NET's env naming.
+  # Required existing Secret in the release namespace. Add the selected cloud provider's
+  # credentials there, or append another Secret name. See README for the exact data keys.
   secretFrom:
     - staticdata-database
   secretProvider:
@@ -52,10 +77,21 @@ api:
     requests:
       cpu: 100m
       memory: 128Mi
+      # 20 concurrent upload buffers at 51,000,000 bytes each, plus runtime/log headroom.
+      ephemeral-storage: 2Gi
     limits:
       cpu: 500m
       memory: 256Mi
+      ephemeral-storage: 4Gi
   volumes:
+    files:
+      mountPath: /var/lib/staticdata
+      emptyDir: false
+      readOnly: false
+      size: 10Gi
+      accessMode: ReadWriteOnce
+      # Empty selects the cluster's default StorageClass.
+      storageClassName: ""
     tmp:
       mountPath: /tmp
       emptyDir: true
