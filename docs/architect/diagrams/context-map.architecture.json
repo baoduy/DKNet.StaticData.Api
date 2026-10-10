@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Context Map (design revision 2)",
+    "title": "DKNet StaticData \u2014 Context Map (design revision 3)",
     "output": "context-map.html",
     "quality_profile": "showcase"
   },
@@ -251,7 +251,7 @@
       "title": "No runtime link",
       "items": [
         "StaticData calls no other DKNet service",
-        "DKNet.Accounts.Api is the reference for stack and layout only"
+        "DKNet.Accounts.Api is the reference for stack, layout, CI, Helm chart and client package"
       ]
     }
   ]

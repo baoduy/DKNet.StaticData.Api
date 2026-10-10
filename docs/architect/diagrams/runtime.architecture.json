@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Runtime Architecture (design revision 2)",
+    "title": "DKNet StaticData \u2014 Runtime Architecture (design revision 3)",
     "output": "runtime.html",
     "quality_profile": "showcase"
   },
@@ -39,7 +39,7 @@
       "id": "edge",
       "type": "backend",
       "label": "API edge",
-      "sublabel": "JWT, caller id, owner",
+      "sublabel": "JWT, caller id, role, owner",
       "pos": [
         280,
         296
@@ -164,7 +164,7 @@
     },
     {
       "kind": "security-group",
-      "label": "Service edge: bearer token required",
+      "label": "Service edge: bearer token and app role required",
       "wraps": [
         "edge"
       ]
@@ -280,7 +280,7 @@
       "title": "Security",
       "items": [
         "Bearer token from client credentials only; no browser calls",
-        "Any valid token with a caller id; no scope or app-role check",
+        "staticdata.read on GET; staticdata.write on POST, PUT, DELETE; 403 without it",
         "Owner travels as the owner query parameter; the owner filter fails closed"
       ]
     },

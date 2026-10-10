@@ -14,7 +14,7 @@
 |---|---|---|
 | Backend services | Calling system | Call the API with a machine-to-machine token (client credentials). Upload, read and delete files; create and delete file groups; save and read UI settings. Every call names the owner. |
 | React app backends | Calling system | Call the API for their browser app, with their own machine-to-machine token. The browser never calls this service. |
-| Operators | Human | Deploy the service, pick the database and the blob storage provider, set the file type allow-list, and read logs and metrics. In Microsoft Entra ID, turn on "Assignment required" for this API's app and assign each calling app (ADR-0013). |
+| Operators | Human | Deploy the service, pick the database and the blob storage provider, set the file type allow-list, and read logs and metrics. In Microsoft Entra ID, define the app roles `staticdata.read` and `staticdata.write` on this API's app, keep "Assignment required" on, and assign each calling app the roles it needs (ADR-0016). |
 | End users | Human | Use the calling apps. They never call this service and never hold a token for it. |
 
 ## Responsibilities
@@ -27,6 +27,7 @@
 - Refuse to delete a file group while a file is linked to it.
 - Keep one UI setting per owner, app and screen, with an opaque JSON value of at most 65,536 bytes.
 - Keep setting groups, and refuse to delete one while a setting is linked to it.
+- Check the caller's app role on every `/v1` route: `staticdata.read` to read, `staticdata.write` to change (ADR-0016).
 - Keep every record under the owner the caller named at create. The owner never changes.
 - Answer a call only with records of the owner that call names.
 - Guard every update against a lost update from a concurrent caller.
@@ -40,7 +41,7 @@
 | The service never… | Who does it instead |
 |---|---|
 | Decides who the owner is, or derives an owner from the token | The calling service, which names the owner on every call |
-| Checks whether an end user may see an owner's data | The calling service. This service trusts every caller that holds a valid token (05-quality, Authorization) |
+| Checks whether an end user may see an owner's data | The calling service. This service checks only the caller's app role, never the owner, and trusts every caller that holds the role (05-quality, Authorization) |
 | Accepts calls from a browser or a user sign-in token | The React app's own backend calls on the browser's behalf |
 | Hands out download links (pre-signed or SAS URLs) | No one; bytes always stream through the API (ADR-0004) |
 | Keeps file versions or replaces a file's bytes | No one in version 1; the caller uploads a new file and deletes the old one |
@@ -65,6 +66,6 @@
 | DKNet (packages) | The packages give blob access, the owner filter, idempotency, list paging and audit fields. This service owns the file, group and setting rules. |
 | DKNet.Accounts.Api | The reference service for stack, layout and deployment. It owns accounts and ledger data. No runtime call in either direction in version 1. |
 | Calling services | A caller decides the owner and who may see it. This service keeps the data under that owner. A caller may call through `DKNet.StaticData.Client`. |
-| OIDC issuer | The issuer signs caller tokens and decides which apps get one. This service validates the token and reads the caller id. |
+| OIDC issuer | The issuer signs caller tokens, decides which apps get one, and puts each app's assigned roles in its token. This service validates the token, reads the caller id and checks the role. |
 | Blob storage provider | The provider stores the bytes, encrypts them at rest and may scan them. This service decides the storage key and streams the bytes. |
 | Database server | The server stores the rows. This service owns its schema and migrations. |

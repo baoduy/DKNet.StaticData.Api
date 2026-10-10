@@ -18,4 +18,4 @@
   - *The owner from the token.* Rejected by the requester.
 - **Consequences:**
   - Easier: one owner rule for every route, enforced below the endpoints.
-  - Harder: the owner is in the URL, so request logs and traces must drop the query string. Any caller with a permission can name any owner (05-quality, Authorization).
+  - Harder: the owner is in the URL, so request logs and traces must drop the query string. Any caller with `staticdata.read` can read any owner's records, and any caller with `staticdata.write` can change them, by naming that owner (ADR-0016; 05-quality, Authorization).

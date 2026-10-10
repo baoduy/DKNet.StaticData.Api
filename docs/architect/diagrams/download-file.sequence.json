@@ -22,7 +22,7 @@
       "id": "edge",
       "type": "security",
       "label": "API edge",
-      "sublabel": "JWT, caller id"
+      "sublabel": "JWT, caller id, role"
     },
     {
       "id": "files",
@@ -69,7 +69,7 @@
       "from": "edge",
       "to": "files",
       "y": 204,
-      "label": "token, caller id, owner ok",
+      "label": "token, caller id, read role, owner ok",
       "variant": "security"
     },
     {
