@@ -76,6 +76,14 @@ public class PrincipalProviderTests
     }
 
     [Fact]
+    public void CurrentUser_AnonymousCaller_IsSystemAccount()
+    {
+        var provider = CreateProvider(CreateAnonymousContext());
+
+        provider.GetCurrentUser().ShouldBe(SharedConsts.SystemAccount);
+    }
+
+    [Fact]
     public void Email_AuthenticatedWithoutEmailClaim_IsEmpty()
     {
         var context = CreateAuthenticatedContext([new Claim(ClaimTypes.NameIdentifier, "client-credentials-sub")]);

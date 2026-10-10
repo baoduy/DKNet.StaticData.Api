@@ -33,6 +33,21 @@ public sealed class FileEdgeCaseTests(FilesHost hosts) : IClassFixture<FilesHost
 
     [Theory]
     [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
+    public async Task TheUploadAndReadAnswersCarryTheVersionAsETag(TestDatabase database)
+    {
+        var api = await hosts.OnAsync(database);
+        using var upload = await api.UploadAsync(Callers.OnboardingSvc, "customer-1", "passport.pdf", Bytes.Of(10), FilesApi.NewKey());
+        await upload.ShouldHaveStatusAsync(HttpStatusCode.Created);
+        upload.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"1\"");
+
+        using var read = await api.ReadAsync(Callers.ReportSvc, "customer-1", (await upload.JsonAsync()).GetProperty("fileId").GetGuid());
+
+        await read.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        read.Headers.ETag.ShouldNotBeNull().Tag.ShouldBe("\"1\"");
+    }
+
+    [Theory]
+    [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
     public async Task AFileNameThatIsOnlyAPathIsRefused(TestDatabase database)
     {
         var api = await hosts.OnAsync(database);

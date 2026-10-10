@@ -22,9 +22,7 @@ internal static class OwnerQuery
     {
         var values = request.Query[Name];
         owner = values.Count == 1 ? values[0] ?? string.Empty : string.Empty;
-        return owner.Length is > 0 and <= MaxLength
-               && !string.IsNullOrWhiteSpace(owner)
-               && !owner.Any(char.IsControl);
+        return owner.Length <= MaxLength && !string.IsNullOrWhiteSpace(owner) && !owner.Any(char.IsControl);
     }
 
     #endregion
