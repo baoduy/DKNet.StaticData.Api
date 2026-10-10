@@ -21,6 +21,9 @@ internal sealed class FileV1Endpoint : IEndpointConfig
 
     private const string FilePart = "file";
 
+    /// <summary>The same answer for a file that never existed and one of another owner (ADR-0005).</summary>
+    private const string NotFoundDetail = "The file does not exist.";
+
     /// <summary>50,000,000 bytes at a slow 2 Mbit/s take about 200 seconds.</summary>
     private static readonly TimeSpan TransferTimeout = TimeSpan.FromSeconds(300);
 
@@ -142,7 +145,7 @@ internal sealed class FileV1Endpoint : IEndpointConfig
         var file = await handler.HandleAsync(fileId, cancellationToken);
         if (file is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.Problem(NotFoundDetail, statusCode: StatusCodes.Status404NotFound);
         }
 
         SetVersion(context, file);
@@ -183,15 +186,14 @@ internal sealed class FileV1Endpoint : IEndpointConfig
     private static IResult Problem(IResultBase result)
     {
         var error = result.Errors.OfType<FileError>().First();
-        return error.Kind == FileErrorKind.NotFound
-            ? TypedResults.NotFound()
-            : TypedResults.Problem(error.Message, statusCode: error.Kind switch
-            {
-                FileErrorKind.Refused => StatusCodes.Status400BadRequest,
-                FileErrorKind.TooLarge => StatusCodes.Status413PayloadTooLarge,
-                FileErrorKind.BytesMissing => StatusCodes.Status500InternalServerError,
-                _ => StatusCodes.Status503ServiceUnavailable
-            });
+        return TypedResults.Problem(error.Message, statusCode: error.Kind switch
+        {
+            FileErrorKind.NotFound => StatusCodes.Status404NotFound,
+            FileErrorKind.Refused => StatusCodes.Status400BadRequest,
+            FileErrorKind.TooLarge => StatusCodes.Status413PayloadTooLarge,
+            FileErrorKind.BytesMissing => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status503ServiceUnavailable
+        });
     }
 
     #endregion

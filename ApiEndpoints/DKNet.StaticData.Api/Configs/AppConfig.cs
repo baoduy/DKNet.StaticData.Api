@@ -86,6 +86,9 @@ internal static class AppConfig
             .UseHttpsConfig()
             .UseHealthzConfig();
 
+        // An error answer that carries no body of its own — the bearer challenge's 401, a 404 for an address the
+        // service does not serve, the request timeout's 504 — still answers as problem details (spec DRK-2206 §3).
+        app.UseStatusCodePages();
         app.UseRouting();
         app.UseRequestBoundsConfig();
         app.UseRateLimitConfig();
