@@ -23,6 +23,9 @@
         <PackageReference Include="DKNet.EfCore.Extensions"/>
         <PackageReference Include="DKNet.EfCore.Relational.Helpers"/>
         <PackageReference Include="DKNet.SlimBus.Extensions"/>
+        <PackageReference Include="DKNet.Svc.BlobStorage.AwsS3"/>
+        <PackageReference Include="DKNet.Svc.BlobStorage.AzureStorage"/>
+        <PackageReference Include="DKNet.Svc.BlobStorage.Local"/>
     </ItemGroup>
 
     <ItemGroup>

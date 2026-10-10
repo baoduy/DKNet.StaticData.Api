@@ -1,4 +1,7 @@
-﻿namespace DKNet.StaticData.AppServices;
+﻿using DKNet.AspCore.Extensions.Endpoints;
+using DKNet.StaticData.AppServices.Features.Files;
+
+namespace DKNet.StaticData.AppServices;
 
 /// <summary>
 ///
@@ -22,7 +25,15 @@ public static class AppSetup
 
         services
             .AddSingleton(TypeAdapterConfig.GlobalSettings)
-            .AddScoped<IMapper, ServiceMapper>();
+            .AddScoped<IMapper, ServiceMapper>()
+            .AddScoped<UploadFileHandler>()
+            .AddScoped<ReadFileHandler>()
+            .AddScoped<DownloadFileHandler>()
+            .AddScoped<DeleteFileHandler>();
+
+        // DKNet's list routes default to a 3-month activity window when neither fromDate nor toDate is sent. This
+        // service's lists return every record of the owner, however old (design 03-integration.md, 04-data.md).
+        services.AddListQueryOptions(options => options.DefaultActivityWindowMonths = 0);
 
         return services;
     }

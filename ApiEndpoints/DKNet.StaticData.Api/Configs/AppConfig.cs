@@ -1,5 +1,4 @@
-﻿using DKNet.AspCore.Idempotency;
-using DKNet.StaticData.Api.Configs.Auth;
+﻿using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
 using DKNet.StaticData.Api.Configs.RateLimits;
 using DKNet.StaticData.Api.Configs.Swagger;
@@ -65,8 +64,8 @@ internal static class AppConfig
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
 
-        //InMemory store
-        services.AddIdempotentKey(o => o.ConflictHandling = IdempotentConflictHandling.ConflictResponse);
+        services.AddIdempotencyConfig(configuration, database)
+            .AddFileStorage(configuration);
 
         return services
             .AddCrosConfig(configuration)

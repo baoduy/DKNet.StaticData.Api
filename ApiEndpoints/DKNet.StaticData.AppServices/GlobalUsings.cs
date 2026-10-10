@@ -1,3 +1,4 @@
+global using System.Diagnostics.CodeAnalysis;
 global using DKNet.AspCore.Extensions.ModelBinding;
 global using DKNet.SlimBus.Extensions;
 global using System.ComponentModel.DataAnnotations;

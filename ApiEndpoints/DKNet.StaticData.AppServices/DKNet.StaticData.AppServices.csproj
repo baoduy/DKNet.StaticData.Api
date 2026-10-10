@@ -45,6 +45,7 @@
         <!-- [FromClaim] declaration + AddContextualRequestPopulation for the six request models' ByUser (DRK-565) -->
         <PackageReference Include="DKNet.AspCore.Extensions"/>
         <PackageReference Include="DKNet.Fw.Extensions"/>
+        <PackageReference Include="DKNet.Svc.BlobStorage.Abstractions"/>
         <PackageReference Include="DKNet.SlimBus.Generators">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

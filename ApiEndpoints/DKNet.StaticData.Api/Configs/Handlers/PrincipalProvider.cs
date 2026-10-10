@@ -1,12 +1,21 @@
+using DKNet.StaticData.Api.ApiEndpoints.Files;
+
 namespace DKNet.StaticData.Api.Configs.Handlers;
 
+/// <summary>
+/// The owner and the caller of the current call, for DKNet's data-owner hook and filter and its audit stamp. The owner
+/// (<see cref="GetOwnershipKey"/>, and so the only accessible key) is the call's validated <c>owner</c> query value;
+/// the audit user (<see cref="GetCurrentUser"/>) is the caller id. They are never the same value (ADR-0005, ADR-0016).
+/// </summary>
 internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrincipalProvider
 {
     #region Fields
 
     private string _email = string.Empty;
     private bool _initialized;
+    private string? _currentUser;
     private string? _ownershipKey;
+    private string? _subject;
     private string _userName = string.Empty;
 
     #endregion
@@ -18,7 +27,7 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         get
         {
             Initialize();
-            return Guid.TryParse(_ownershipKey, out var id) ? id : Guid.Empty;
+            return Guid.TryParse(_subject, out var id) ? id : Guid.Empty;
         }
     }
 
@@ -50,13 +59,10 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         return _ownershipKey;
     }
 
-    // DRK-1466: deliberately identical to GetOwnershipKey() today — OwnedBy and CreatedBy/UpdatedBy
-    // share one claim for now. Do not collapse into GetOwnershipKey(): ServiceConfigs.AddCurrentUserProvider
-    // wires this to the audit hook independently of AddDataOwnerProvider, so the two are free to diverge later.
     public string? GetCurrentUser()
     {
         Initialize();
-        return _ownershipKey;
+        return _currentUser;
     }
 
     private void Initialize()
@@ -75,13 +81,16 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
         if (context.User.Identity?.IsAuthenticated != true)
         {
             _ownershipKey = SharedConsts.SystemAccount;
+            _currentUser = SharedConsts.SystemAccount;
             _initialized = true;
             return;
         }
 
         _userName = context.User.Identity.Name ?? string.Empty;
+        _ownershipKey = OwnerQuery.TryRead(context.Request, out var owner) ? owner : null;
+        _currentUser = CallerAccessor.Read(context.User);
 
-        //Get ownership key from subject claims, first non-empty wins
+        //Get the subject from subject claims, first non-empty wins
         string[] subjectClaimTypes =
         [
             "http://schemas.microsoft.com/identity/claims/objectidentifier", "oid", ClaimTypes.NameIdentifier, "sub"
@@ -91,7 +100,7 @@ internal sealed class PrincipalProvider(IHttpContextAccessor accessor) : IPrinci
             var claim = context.User.FindFirst(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase));
             if (claim != null && !string.IsNullOrWhiteSpace(claim.Value))
             {
-                _ownershipKey = claim.Value;
+                _subject = claim.Value;
                 break;
             }
         }

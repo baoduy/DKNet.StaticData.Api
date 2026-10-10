@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 namespace DKNet.StaticData.Api.Configs.Auth;
@@ -8,6 +9,19 @@ namespace DKNet.StaticData.Api.Configs.Auth;
 [ExcludeFromCodeCoverage]
 internal static class AuthConfig
 {
+    #region Fields
+
+    /// <summary>The app role, and the policy of the same name, every <c>GET</c> under <c>/v1</c> needs (ADR-0016).</summary>
+    public const string ReadRole = "staticdata.read";
+
+    /// <summary>The app role, and the policy of the same name, every <c>POST</c>, <c>PUT</c> and <c>DELETE</c> needs.</summary>
+    public const string WriteRole = "staticdata.write";
+
+    /// <summary>The only claim app roles are read from: a scope (<c>scp</c>) never grants one.</summary>
+    private const string RolesClaim = "roles";
+
+    #endregion
+
     #region Methods
 
     /// <summary>
@@ -25,7 +39,24 @@ internal static class AuthConfig
         services.MarkConfigAdded(nameof(AuthConfig));
 
         services.AddAuthentication()
-            .AddJwtBearer();
+            .AddJwtBearer(options =>
+            {
+                // Claims keep their token names, so "roles", "client_id", "azp" and "appid" are read as issued.
+                options.MapInboundClaims = false;
+                options.Events = new JwtBearerEvents
+                {
+                    // A valid token without a caller id is not a caller: 401, not 403 (ADR-0016).
+                    OnTokenValidated = context =>
+                    {
+                        if (CallerAccessor.Read(context.Principal) is null)
+                        {
+                            context.Fail("The token carries no caller id (client_id, azp or appid).");
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+            });
 
         services.AddAuthorization(options =>
         {
@@ -33,7 +64,10 @@ internal static class AuthConfig
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .Build();
+            options.AddPolicy(ReadRole, policy => policy.RequireAuthenticatedUser().RequireClaim(RolesClaim, ReadRole));
+            options.AddPolicy(WriteRole, policy => policy.RequireAuthenticatedUser().RequireClaim(RolesClaim, WriteRole));
         });
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemDetailsForbiddenHandler>();
 
         return services;
     }

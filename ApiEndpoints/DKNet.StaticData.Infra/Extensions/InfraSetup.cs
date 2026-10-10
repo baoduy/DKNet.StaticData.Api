@@ -4,6 +4,7 @@ using DKNet.EfCore.Hooks;
 using DKNet.EfCore.Specifications;
 using DKNet.StaticData.Infra.Contexts;
 using DKNet.StaticData.Infra.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DKNet.StaticData.Infra.Extensions;
 
@@ -41,6 +42,9 @@ public static class InfraSetup
                 builder.UseAutoConfigModel([typeof(CoreDbContext).Assembly, typeof(DomainEntity).Assembly])
                     .UseAutoDataSeeding([typeof(InfraSetup).Assembly]);
             });
+
+        service.TryAddSingleton(TimeProvider.System);
+        service.AddHostedService<IdempotencySweep>();
 
         return service;
     }

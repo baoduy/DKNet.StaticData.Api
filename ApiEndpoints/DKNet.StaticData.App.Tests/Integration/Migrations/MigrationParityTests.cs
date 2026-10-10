@@ -18,8 +18,13 @@ public class MigrationParityTests
         sqlServer.ShouldBe(postgres);
     }
 
+    /// <summary>
+    /// Every migrated table as <c>schema.table</c>, with the database's own default schema (Postgres <c>public</c>, SQL
+    /// Server <c>dbo</c>) written as <c>default</c>: the DKNet idempotency store keeps its table there on each database.
+    /// </summary>
     private static async Task<string[]> MigratedTablesAsync(TestDatabase database, string choice)
     {
+        var defaultSchema = database == TestDatabase.Postgres ? "public." : "dbo.";
         var server = await TestDatabaseServer.SharedAsync(database);
         var (_, connectionString) = await server.CreateEmptyDatabaseAsync();
         var (host, startupError) = await DatabaseSettingApiFactory.StartAsync(
@@ -27,6 +32,8 @@ public class MigrationParityTests
         startupError.ShouldBeNull();
         await host!.DisposeAsync();
 
-        return [.. (await server.ListTablesAsync(connectionString)).Order(StringComparer.Ordinal)];
+        return [.. (await server.ListTablesAsync(connectionString))
+            .Select(t => t.StartsWith(defaultSchema, StringComparison.Ordinal) ? "default." + t[defaultSchema.Length..] : t)
+            .Order(StringComparer.Ordinal)];
     }
 }
