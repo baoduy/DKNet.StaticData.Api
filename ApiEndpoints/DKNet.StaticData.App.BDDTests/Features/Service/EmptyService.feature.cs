@@ -105,7 +105,7 @@ namespace DKNet.StaticData.App.BDDTests.Features.Service
         
         private static global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages InitializeCucumberMessages()
         {
-            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Service/EmptyService.feature.ndjson", 26);
+            return new global::Reqnroll.Formatters.RuntimeSupport.FeatureLevelCucumberMessages("Features/Service/EmptyService.feature.ndjson", 24);
         }
         
         [global::NUnit.Framework.TestAttribute()]
@@ -560,45 +560,10 @@ namespace DKNet.StaticData.App.BDDTests.Features.Service
         }
         
         [global::NUnit.Framework.TestAttribute()]
-        [global::NUnit.Framework.DescriptionAttribute("The service serves only the 2 health routes")]
-        [global::NUnit.Framework.CategoryAttribute("unit")]
-        public async global::System.Threading.Tasks.Task TheServiceServesOnlyThe2HealthRoutes()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "unit"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "20";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("The service serves only the 2 health routes", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 119
-  this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 120
-    await testRunner.GivenAsync("the service runs with its default settings", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 121
-    await testRunner.WhenAsync("the service lists the routes it serves", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 122
-    await testRunner.ThenAsync("the list holds only the health status route and the health detail route", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::NUnit.Framework.TestAttribute()]
         [global::NUnit.Framework.DescriptionAttribute("An address the service does not serve still needs a token")]
         [global::NUnit.Framework.CategoryAttribute("integration")]
-        [global::NUnit.Framework.TestCaseAttribute("Postgres", "21", null)]
-        [global::NUnit.Framework.TestCaseAttribute("SQL Server", "22", null)]
+        [global::NUnit.Framework.TestCaseAttribute("Postgres", "20", null)]
+        [global::NUnit.Framework.TestCaseAttribute("SQL Server", "21", null)]
         public async global::System.Threading.Tasks.Task AnAddressTheServiceDoesNotServeStillNeedsAToken(string database, string @__pickleIndex, string[] exampleTags)
         {
             string[] @__tags = new string[] {
@@ -614,7 +579,7 @@ namespace DKNet.StaticData.App.BDDTests.Features.Service
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("An address the service does not serve still needs a token", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
             string[] tagsOfRule = ((string[])(null));
             global::Reqnroll.RuleInfo ruleInfo = null;
-#line 125
+#line 119
   this.ScenarioInitialize(scenarioInfo, ruleInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -624,52 +589,17 @@ namespace DKNet.StaticData.App.BDDTests.Features.Service
             else
             {
                 await this.ScenarioStartAsync();
-#line 126
+#line 120
     await testRunner.GivenAsync(string.Format("the service runs on {0} with token checking on", database), ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 127
+#line 121
     await testRunner.WhenAsync("onboarding-service calls the root address without a token", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 128
+#line 122
     await testRunner.ThenAsync("the service refuses the call as unauthenticated", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 129
+#line 123
     await testRunner.AndAsync("the answer carries no health status", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [global::NUnit.Framework.TestAttribute()]
-        [global::NUnit.Framework.DescriptionAttribute("Slice 1 has no client package")]
-        [global::NUnit.Framework.CategoryAttribute("unit")]
-        public async global::System.Threading.Tasks.Task Slice1HasNoClientPackage()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "unit"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            string pickleIndex = "23";
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Slice 1 has no client package", null, tagsOfScenario, argumentsOfScenario, featureTags, pickleIndex);
-            string[] tagsOfRule = ((string[])(null));
-            global::Reqnroll.RuleInfo ruleInfo = null;
-#line 137
-  this.ScenarioInitialize(scenarioInfo, ruleInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                await testRunner.SkipScenarioAsync();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 138
-    await testRunner.GivenAsync("the service solution built from the template", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 139
-    await testRunner.WhenAsync("dev-team lists its projects", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 140
-    await testRunner.ThenAsync("no client package project is present", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

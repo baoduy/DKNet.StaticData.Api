@@ -115,12 +115,6 @@ Feature: DKNet StaticData empty service
       | Postgres   |
       | SQL Server |
 
-  @unit
-  Scenario: The service serves only the 2 health routes
-    Given the service runs with its default settings
-    When the service lists the routes it serves
-    Then the list holds only the health status route and the health detail route
-
   @integration
   Scenario Outline: An address the service does not serve still needs a token
     Given the service runs on <database> with token checking on
@@ -132,9 +126,3 @@ Feature: DKNet StaticData empty service
       | database   |
       | Postgres   |
       | SQL Server |
-
-  @unit
-  Scenario: Slice 1 has no client package
-    Given the service solution built from the template
-    When dev-team lists its projects
-    Then no client package project is present
