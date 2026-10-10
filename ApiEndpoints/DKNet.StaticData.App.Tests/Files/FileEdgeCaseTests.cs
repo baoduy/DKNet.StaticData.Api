@@ -97,7 +97,9 @@ public sealed class FileEdgeCaseTests(FilesHost hosts) : IClassFixture<FilesHost
         api.Host.LogCapture.Entries.ShouldContain(e =>
             e.Level == LogLevel.Error && e.Message == "Blob storage cannot be reached: IOException");
         api.Host.Blob.SavedKeys.ShouldBeEmpty();
-        api.Host.Blob.DeletedKeys.ShouldHaveSingleItem().ShouldStartWith("files/");
+        // the key of the new file id the upload made: files/<file id>.pdf
+        api.Host.Blob.DeletedKeys.ShouldHaveSingleItem()
+            .ShouldMatch(@"^files/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$");
     }
 
     [Theory]
