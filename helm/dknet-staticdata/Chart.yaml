@@ -2,7 +2,7 @@ apiVersion: v2
 name: dknet-staticdata
 description: Internal DKNet.StaticData API built on drunk-app.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.0.0"
 dependencies:
   - name: drunk-app

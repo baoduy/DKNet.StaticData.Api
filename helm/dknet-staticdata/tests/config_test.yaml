@@ -18,6 +18,18 @@ tests:
           value: "true"
       - notExists:
           path: data.ConnectionStrings__AppDb
+      - equal:
+          path: data.BlobStorage__Provider
+          value: Local
+      - equal:
+          path: data.BlobStorage__LocalFolder__RootFolder
+          value: /var/lib/staticdata
+      - notExists:
+          path: data.BlobService__AzureStorage__ConnectionString
+      - notExists:
+          path: data.BlobService__S3__AccessKey
+      - notExists:
+          path: data.BlobService__S3__Secret
   - it: accepts SQL Server
     set:
       api.configMap.Database__Provider: SqlServer
@@ -25,3 +37,107 @@ tests:
       - equal:
           path: data.Database__Provider
           value: SqlServer
+  - it: renders Azure container settings and keeps credentials in the external Secret
+    set:
+      api.configMap.BlobStorage__Provider: AzureStorage
+      api.configMap.BlobService__AzureStorage__ContainerName: documents
+    asserts:
+      - equal:
+          path: data.BlobStorage__Provider
+          value: AzureStorage
+      - equal:
+          path: data.BlobService__AzureStorage__ContainerName
+          value: documents
+      - notExists:
+          path: data.BlobService__AzureStorage__ConnectionString
+  - it: renders the S3 endpoint bucket region and path style without credentials
+    set:
+      api.configMap.BlobStorage__Provider: AwsS3
+    asserts:
+      - equal:
+          path: data.BlobStorage__Provider
+          value: AwsS3
+      - equal:
+          path: data.BlobService__S3__ConnectionString
+          value: https://s3.amazonaws.com
+      - equal:
+          path: data.BlobService__S3__BucketName
+          value: staticdata
+      - equal:
+          path: data.BlobService__S3__RegionEndpointName
+          value: us-east-1
+      - equal:
+          path: data.BlobService__S3__ForcePathStyle
+          value: "false"
+      - notExists:
+          path: data.BlobService__S3__AccessKey
+      - notExists:
+          path: data.BlobService__S3__Secret
+  - it: accepts S3 compatible provider overrides
+    set:
+      api.configMap.BlobStorage__Provider: AwsS3
+      api.configMap.BlobService__S3__ConnectionString: https://s3.example.test
+      api.configMap.BlobService__S3__BucketName: files
+      api.configMap.BlobService__S3__RegionEndpointName: eu-west-1
+      api.configMap.BlobService__S3__ForcePathStyle: "true"
+    asserts:
+      - equal:
+          path: data.BlobService__S3__ConnectionString
+          value: https://s3.example.test
+      - equal:
+          path: data.BlobService__S3__BucketName
+          value: files
+      - equal:
+          path: data.BlobService__S3__RegionEndpointName
+          value: eu-west-1
+      - equal:
+          path: data.BlobService__S3__ForcePathStyle
+          value: "true"
+  - it: renders the design's 14 extensions in order
+    asserts:
+      - equal: {path: data.Files__AllowedExtensions__0, value: .pdf}
+      - equal: {path: data.Files__AllowedExtensions__1, value: .png}
+      - equal: {path: data.Files__AllowedExtensions__2, value: .jpg}
+      - equal: {path: data.Files__AllowedExtensions__3, value: .jpeg}
+      - equal: {path: data.Files__AllowedExtensions__4, value: .gif}
+      - equal: {path: data.Files__AllowedExtensions__5, value: .txt}
+      - equal: {path: data.Files__AllowedExtensions__6, value: .csv}
+      - equal: {path: data.Files__AllowedExtensions__7, value: .json}
+      - equal: {path: data.Files__AllowedExtensions__8, value: .xml}
+      - equal: {path: data.Files__AllowedExtensions__9, value: .doc}
+      - equal: {path: data.Files__AllowedExtensions__10, value: .docx}
+      - equal: {path: data.Files__AllowedExtensions__11, value: .xls}
+      - equal: {path: data.Files__AllowedExtensions__12, value: .xlsx}
+      - equal: {path: data.Files__AllowedExtensions__13, value: .zip}
+      - notExists: {path: data.Files__AllowedExtensions__14}
+  - it: narrows the allow list with blank unused entries
+    set:
+      api.configMap.Files__AllowedExtensions__0: .pdf
+      api.configMap.Files__AllowedExtensions__1: ""
+      api.configMap.Files__AllowedExtensions__2: ""
+      api.configMap.Files__AllowedExtensions__3: ""
+      api.configMap.Files__AllowedExtensions__4: ""
+      api.configMap.Files__AllowedExtensions__5: ""
+      api.configMap.Files__AllowedExtensions__6: ""
+      api.configMap.Files__AllowedExtensions__7: ""
+      api.configMap.Files__AllowedExtensions__8: ""
+      api.configMap.Files__AllowedExtensions__9: ""
+      api.configMap.Files__AllowedExtensions__10: ""
+      api.configMap.Files__AllowedExtensions__11: ""
+      api.configMap.Files__AllowedExtensions__12: ""
+      api.configMap.Files__AllowedExtensions__13: ""
+    asserts:
+      - equal: {path: data.Files__AllowedExtensions__0, value: .pdf}
+      - equal: {path: data.Files__AllowedExtensions__1, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__2, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__3, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__4, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__5, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__6, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__7, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__8, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__9, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__10, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__11, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__12, value: ""}
+      - equal: {path: data.Files__AllowedExtensions__13, value: ""}
