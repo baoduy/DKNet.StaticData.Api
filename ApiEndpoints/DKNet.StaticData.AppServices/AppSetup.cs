@@ -1,4 +1,5 @@
 ﻿using DKNet.AspCore.Extensions.Endpoints;
+using DKNet.StaticData.AppServices.Features.FileGroups;
 using DKNet.StaticData.AppServices.Features.Files;
 
 namespace DKNet.StaticData.AppServices;
@@ -29,7 +30,12 @@ public static class AppSetup
             .AddScoped<UploadFileHandler>()
             .AddScoped<ReadFileHandler>()
             .AddScoped<DownloadFileHandler>()
-            .AddScoped<DeleteFileHandler>();
+            .AddScoped<DeleteFileHandler>()
+            .AddScoped<CreateFileGroupHandler>()
+            .AddScoped<ListFileGroupsHandler>()
+            .AddScoped<ReadFileGroupHandler>()
+            .AddScoped<UpdateFileGroupHandler>()
+            .AddScoped<DeleteFileGroupHandler>();
 
         // DKNet's list routes default to a 3-month activity window when neither fromDate nor toDate is sent. This
         // service's lists return every record of the owner, however old (design 03-integration.md, 04-data.md).

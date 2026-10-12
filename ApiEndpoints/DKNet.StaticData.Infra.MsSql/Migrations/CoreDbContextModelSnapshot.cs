@@ -22,6 +22,62 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DKNet.StaticData.Domains.Features.FileGroups.Entities.FileGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OwnedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTimeOffset?>("UpdatedOn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnedBy", "CreatedOn");
+
+                    b.HasIndex("OwnedBy", "ExternalRef");
+
+                    b.HasIndex("OwnedBy", "Purpose");
+
+                    b.ToTable("FileGroups", "files");
+                });
+
             modelBuilder.Entity("DKNet.StaticData.Domains.Features.Files.Entities.StoredFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -50,6 +106,9 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("OwnedBy")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -77,12 +136,22 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("StorageKey")
                         .IsUnique();
 
                     b.HasIndex("OwnedBy", "CreatedOn");
 
                     b.ToTable("StoredFiles", "files");
+                });
+
+            modelBuilder.Entity("DKNet.StaticData.Domains.Features.Files.Entities.StoredFile", b =>
+                {
+                    b.HasOne("DKNet.StaticData.Domains.Features.FileGroups.Entities.FileGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }
