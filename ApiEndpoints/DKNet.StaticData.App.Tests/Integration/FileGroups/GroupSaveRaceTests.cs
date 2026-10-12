@@ -5,9 +5,10 @@ using DKNet.StaticData.App.TestSupport;
 namespace DKNet.StaticData.App.Tests.Integration.FileGroups;
 
 /// <summary>
-/// Brief DRK-2239 §3 rows 14 and 15: what another call changes between a group route's checks and its save. Each
-/// change is made in the database just before the route's own save. An update never overwrites another call's change
-/// (spec: of 2 updates with the same version, only the first is kept), whatever the timing of the 2 calls.
+/// Brief DRK-2239 §3 rows 14 and 15: a linked file stops a group delete before its save, and what another call changes
+/// between a group route's checks and its save, made in the database just before the route's own save. An update never
+/// overwrites another call's change (spec: of 2 updates with the same version, only the first is kept), whatever the
+/// timing of the 2 calls.
 /// </summary>
 public sealed class GroupSaveRaceTests(FilesHost hosts) : IClassFixture<FilesHost>
 {
@@ -25,6 +26,22 @@ public sealed class GroupSaveRaceTests(FilesHost hosts) : IClassFixture<FilesHos
         await response.ShouldBeProblemDetailsAsync(HttpStatusCode.Conflict);
         (await api.GroupNamesAsync("customer-1")).ShouldBe(["Onboarding pack"]);
         (await api.FileAsync("customer-1", fileId)).GetProperty("version").GetInt32().ShouldBe(1);
+    }
+
+    [Theory]
+    [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
+    public async Task AGroupWithALinkedFileAnswers409BeforeItsSave(TestDatabase database)
+    {
+        var api = await hosts.OnAsync(database);
+        var groupId = await api.HasGroupAsync("customer-1", "Onboarding pack");
+        var fileId = await api.HasFileAsync("customer-1", "passport.pdf");
+        await SetAsync(api, "StoredFiles", "GroupId", groupId, fileId);
+        api.Host.BeforeSave.Run(() => throw new InvalidOperationException("the delete must not reach its save"));
+
+        using var response = await api.DeleteGroupAsync(Callers.OnboardingSvc, "customer-1", groupId);
+
+        await response.ShouldBeProblemDetailsAsync(HttpStatusCode.Conflict);
+        (await api.GroupNamesAsync("customer-1")).ShouldBe(["Onboarding pack"]);
     }
 
     [Theory]
