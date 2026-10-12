@@ -27,7 +27,9 @@ public static class PostgresSetup
                 .MaxBatchSize(100)
                 .MigrationsHistoryTable(nameof(CoreDbContext), DomainSchemas.Migration)
                 .MigrationsAssembly(typeof(PostgresSetup).Assembly)
-                .EnableRetryOnFailure()
+                // 3 retries (waits of about 0 + 1 + 3 s): a database that cannot be reached fails well inside the 30 s
+                // request timeout and answers 503. The default 6 retries waited about 56 s.
+                .EnableRetryOnFailure(maxRetryCount: 3)
                 .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
     }
 }

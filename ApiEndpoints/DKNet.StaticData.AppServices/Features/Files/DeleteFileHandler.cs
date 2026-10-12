@@ -33,8 +33,8 @@ public sealed class DeleteFileHandler(
         }
         catch (DbUpdateConcurrencyException)
         {
-            // Another call deleted the row between the read and this save: the file no longer exists.
-            return Result.Fail(new FileError(FileErrorKind.NotFound, "The file does not exist."));
+            // Another call deleted the row between the read and this save: the file is gone, as this call asked, so it
+            // succeeds as a normal delete. Its byte delete below is best effort and tolerates bytes already gone.
         }
 
         await blobs.TryDeleteAsync(file, logger);

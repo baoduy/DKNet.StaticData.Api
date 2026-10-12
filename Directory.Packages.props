@@ -44,25 +44,25 @@
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
-    <PackageVersion Include="DKNet.AspCore.Extensions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.AspCore.Idempotency" Version="13.2.5" />
-    <PackageVersion Include="DKNet.AspCore.Idempotency.MsSqlStore" Version="13.2.5" />
-    <PackageVersion Include="DKNet.AspCore.Idempotency.NpgsqlStore" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.Abstractions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.Events" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.Extensions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="13.2.5" />
-    <PackageVersion Include="DKNet.EfCore.Specifications" Version="13.2.5" />
-    <PackageVersion Include="DKNet.Fw.Extensions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.SlimBus.Extensions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.SlimBus.Generators" Version="13.2.5" />
-    <PackageVersion Include="DKNet.Svc.BlobStorage.Abstractions" Version="13.2.5" />
-    <PackageVersion Include="DKNet.Svc.BlobStorage.AwsS3" Version="13.2.5" />
-    <PackageVersion Include="DKNet.Svc.BlobStorage.AzureStorage" Version="13.2.5" />
-    <PackageVersion Include="DKNet.Svc.BlobStorage.Local" Version="13.2.5" />
+    <PackageVersion Include="DKNet.AspCore.Extensions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.AspCore.Idempotency" Version="13.2.7" />
+    <PackageVersion Include="DKNet.AspCore.Idempotency.MsSqlStore" Version="13.2.7" />
+    <PackageVersion Include="DKNet.AspCore.Idempotency.NpgsqlStore" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.AuditLogs" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.DataAuthorization" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.Abstractions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.DtoGenerator" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.Events" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.Extensions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.Relational.Helpers" Version="13.2.7" />
+    <PackageVersion Include="DKNet.EfCore.Specifications" Version="13.2.7" />
+    <PackageVersion Include="DKNet.Fw.Extensions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.SlimBus.Extensions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.SlimBus.Generators" Version="13.2.7" />
+    <PackageVersion Include="DKNet.Svc.BlobStorage.Abstractions" Version="13.2.7" />
+    <PackageVersion Include="DKNet.Svc.BlobStorage.AwsS3" Version="13.2.7" />
+    <PackageVersion Include="DKNet.Svc.BlobStorage.AzureStorage" Version="13.2.7" />
+    <PackageVersion Include="DKNet.Svc.BlobStorage.Local" Version="13.2.7" />
     <PackageVersion Include="FluentResults" Version="4.0.0" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
