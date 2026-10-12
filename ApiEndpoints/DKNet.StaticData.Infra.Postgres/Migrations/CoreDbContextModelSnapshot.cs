@@ -22,6 +22,59 @@ namespace DKNet.StaticData.Infra.Postgres.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("DKNet.StaticData.Domains.Features.FileGroups.Entities.FileGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalRef")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OwnedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTimeOffset?>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnedBy", "CreatedOn");
+
+                    b.HasIndex("OwnedBy", "ExternalRef");
+
+                    b.HasIndex("OwnedBy", "Purpose");
+
+                    b.ToTable("FileGroups", "files");
+                });
+
             modelBuilder.Entity("DKNet.StaticData.Domains.Features.Files.Entities.StoredFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -50,6 +103,9 @@ namespace DKNet.StaticData.Infra.Postgres.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("OwnedBy")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -76,12 +132,22 @@ namespace DKNet.StaticData.Infra.Postgres.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("StorageKey")
                         .IsUnique();
 
                     b.HasIndex("OwnedBy", "CreatedOn");
 
                     b.ToTable("StoredFiles", "files");
+                });
+
+            modelBuilder.Entity("DKNet.StaticData.Domains.Features.Files.Entities.StoredFile", b =>
+                {
+                    b.HasOne("DKNet.StaticData.Domains.Features.FileGroups.Entities.FileGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

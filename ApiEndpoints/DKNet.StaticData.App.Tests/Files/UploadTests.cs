@@ -116,8 +116,7 @@ public sealed class UploadTests(FilesHost hosts) : IClassFixture<FilesHost>
     public static IEnumerable<object[]> Forms => Databases.With(
         ["a JSON body instead of a form", HttpStatusCode.UnsupportedMediaType],
         ["a form with no file part", HttpStatusCode.BadRequest],
-        ["a form with 2 file parts", HttpStatusCode.BadRequest],
-        ["a form with \"passport.pdf\" and a group id", HttpStatusCode.BadRequest]);
+        ["a form with 2 file parts", HttpStatusCode.BadRequest]);
 
     /// <summary>Scenario Outline: The upload form must hold exactly 1 file.</summary>
     [Theory]
@@ -192,10 +191,6 @@ public sealed class UploadTests(FilesHost hosts) : IClassFixture<FilesHost>
                 return FilesApi.Form(
                     ("passport.pdf", Bytes.Of(1024), "application/pdf"),
                     ("visa.pdf", Bytes.Of(1024), "application/pdf"));
-            case "a form with \"passport.pdf\" and a group id":
-                var withGroup = FilesApi.Form(("passport.pdf", Bytes.Of(1024), "application/pdf"));
-                withGroup.Add(new StringContent(Guid.NewGuid().ToString()), "groupId");
-                return withGroup;
             default:
                 throw new ArgumentOutOfRangeException(nameof(form), form, null);
         }

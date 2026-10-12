@@ -1,5 +1,6 @@
 using DKNet.EfCore.Abstractions.Entities;
 using DKNet.EfCore.DataAuthorization;
+using DKNet.StaticData.Domains.Features.FileGroups.Entities;
 
 namespace DKNet.StaticData.Infra.Contexts;
 
@@ -20,8 +21,9 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
     #region Methods
 
     /// <summary>
-    /// On SQL Server, every owner column compares exactly, as it does on Postgres by default (design <c>04-data.md</c>,
-    /// ADR-0002): the binary collation <see cref="ExactCollation"/>. Runs after DKNet's auto-config has applied every
+    /// On SQL Server, every owner column and the file group's purpose and external reference compare exactly, as they
+    /// do on Postgres by default (design <c>04-data.md</c>, ADR-0002): the binary collation <see cref="ExactCollation"/>.
+    /// Runs after DKNet's auto-config has applied every
     /// entity configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -33,6 +35,10 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
         {
             entity.GetProperty(nameof(IOwnedBy.OwnedBy)).SetCollation(ExactCollation);
         }
+
+        var group = modelBuilder.Entity<FileGroup>();
+        group.Property(g => g.Purpose).UseCollation(ExactCollation);
+        group.Property(g => g.ExternalRef).UseCollation(ExactCollation);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

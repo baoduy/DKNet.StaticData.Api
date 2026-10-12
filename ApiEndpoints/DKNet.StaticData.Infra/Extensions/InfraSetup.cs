@@ -32,6 +32,7 @@ public static class InfraSetup
     {
         service
             .AddSpecRepo<CoreDbContext>()
+            .AddEfCoreExceptionHandler<CoreDbContext, VersionConflictHandler>()
             .AddEventPublisher<CoreDbContext, EventPublisher>()
             .AddDbContextWithHook<CoreDbContext>((sp, builder) =>
             {

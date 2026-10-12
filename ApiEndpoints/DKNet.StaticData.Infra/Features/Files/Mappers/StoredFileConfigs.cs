@@ -1,3 +1,4 @@
+using DKNet.StaticData.Domains.Features.FileGroups.Entities;
 using DKNet.StaticData.Domains.Features.Files.Entities;
 
 namespace DKNet.StaticData.Infra.Features.Files.Mappers;
@@ -24,6 +25,10 @@ internal sealed class StoredFileConfigs : DefaultEntityTypeConfiguration<StoredF
         builder.HasIndex(f => f.StorageKey).IsUnique();
 
         builder.Property(f => f.Version).IsConcurrencyToken();
+
+        // A group with a linked file is never deleted: the database refuses it, never cascades.
+        builder.HasIndex(f => f.GroupId);
+        builder.HasOne<FileGroup>().WithMany().HasForeignKey(f => f.GroupId).OnDelete(DeleteBehavior.Restrict);
 
         builder.ToTable("StoredFiles", DomainSchemas.Files);
     }

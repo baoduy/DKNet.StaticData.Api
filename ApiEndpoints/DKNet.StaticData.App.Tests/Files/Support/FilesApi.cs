@@ -61,7 +61,8 @@ public sealed class FilesApi(FilesApiFactory host, TestDatabaseServer server)
 
     /// <summary>
     /// Sends one request. <paramref name="token"/> null sends no <c>Authorization</c> header; <paramref name="traceParent"/>
-    /// sets the W3C <c>traceparent</c> header the call's trace continues.
+    /// sets the W3C <c>traceparent</c> header the call's trace continues; <paramref name="ifMatch"/> is sent as the
+    /// <c>If-Match</c> header exactly as written, unchecked, so a malformed tag reaches the service as it is.
     /// </summary>
     public async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
@@ -69,7 +70,8 @@ public sealed class FilesApi(FilesApiFactory host, TestDatabaseServer server)
         string? token,
         HttpContent? content = null,
         string? idempotencyKey = null,
-        string? traceParent = null)
+        string? traceParent = null,
+        string? ifMatch = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         if (token is not null)
@@ -85,6 +87,11 @@ public sealed class FilesApi(FilesApiFactory host, TestDatabaseServer server)
         if (traceParent is not null)
         {
             request.Headers.Add("traceparent", traceParent);
+        }
+
+        if (ifMatch is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch).ShouldBeTrue();
         }
 
         return await Client.SendAsync(request);

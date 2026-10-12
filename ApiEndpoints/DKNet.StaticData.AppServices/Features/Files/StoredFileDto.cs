@@ -25,6 +25,9 @@ public sealed record StoredFileDto
     /// <summary>SHA-256, 64 lowercase hex characters.</summary>
     public string Checksum { get; init; } = string.Empty;
 
+    /// <summary>The file group the file is linked to; left out when it is in none.</summary>
+    public Guid? GroupId { get; init; }
+
     public int Version { get; init; }
 
     /// <summary>The caller id that created the file.</summary>

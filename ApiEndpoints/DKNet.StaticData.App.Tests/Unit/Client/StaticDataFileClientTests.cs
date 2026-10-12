@@ -44,6 +44,40 @@ public sealed class StaticDataFileClientTests
     }
 
     [Fact]
+    public async Task AnUploadIntoAGroupSendsTheGroupPartAfterTheFilePart()
+    {
+        var groupId = Guid.Parse("7a1e4c55-2b9d-4e0f-8c3a-6d5f1b2e9a07");
+        string[] parts = [];
+        var client = ClientOver(new AnswerHandler(request =>
+        {
+            // read inside the send: the client disposes the form once the call returns
+            parts = [.. ((MultipartFormDataContent)request.Content!).Select(part =>
+                $"{part.Headers.ContentDisposition!.Name}|{part.Headers.ContentDisposition.FileName}|{part.ReadAsStringAsync().Result}")];
+            return new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = new StringContent($$"""{"fileId":"{{FileId}}","groupId":"{{groupId}}"}""", Encoding.UTF8, "application/json")
+            };
+        }));
+
+        var file = await client.UploadAsync("customer-1", "upload-1", "passport.pdf", new MemoryStream("%PDF-1.7"u8.ToArray()), groupId);
+
+        parts.ShouldBe(["file|passport.pdf|%PDF-1.7", $"groupId||{groupId}"]);
+        file.GroupId.ShouldBe(groupId);
+    }
+
+    [Fact]
+    public async Task AListOfAGroupSendsTheGroupAfterThePage()
+    {
+        var groupId = Guid.Parse("7a1e4c55-2b9d-4e0f-8c3a-6d5f1b2e9a07");
+        var network = new RecordingHandler();
+
+        await ClientOver(network).ListAsync("customer-1", pageNumber: 1, pageSize: 10, groupId: groupId);
+
+        network.LastRequest.ShouldNotBeNull().RequestUri.ShouldNotBeNull().AbsoluteUri
+            .ShouldBe($"https://staticdata.example.test/v1/files?owner=customer-1&pageNumber=1&pageSize=10&groupId={groupId}");
+    }
+
+    [Fact]
     public async Task ADownloadAndADeleteCallTheirRoutes()
     {
         var network = new RecordingHandler();

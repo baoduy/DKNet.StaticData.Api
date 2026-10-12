@@ -11,12 +11,13 @@ namespace DKNet.StaticData.App.TestSupport;
 /// <summary>
 /// A host of the file routes as a deployment runs them: the service's own start-up code on a real, migrated Postgres or
 /// SQL Server database, token and role checks on, the service's own JWT bearer scheme trusting <see cref="TestTokens"/>,
-/// and blob storage on a local folder (<see cref="BlobRoot"/>). Beyond the bearer scheme's trust, four seams are added
+/// and blob storage on a local folder (<see cref="BlobRoot"/>). Beyond the bearer scheme's trust, five seams are added
 /// and nothing else is swapped:
 /// <list type="bullet">
 /// <item><see cref="LogCapture"/> records every log entry the host writes.</item>
 /// <item><see cref="Blob"/> fails, holds or records blob storage calls (<see cref="ControllableBlobService"/>).</item>
 /// <item><see cref="SaveFailure"/> makes saving the service's records fail.</item>
+/// <item><see cref="BeforeSave"/> runs a test action just before the service's records are saved.</item>
 /// <item>An optional <see cref="TimeProvider"/> replaces the host's clock.</item>
 /// </list>
 /// </summary>
@@ -44,6 +45,8 @@ public sealed class FilesApiFactory : WebApplicationFactory<DKNet.StaticData.Api
     public BlobStorageControl Blob { get; } = new();
 
     public FailingSaveInterceptor SaveFailure { get; } = new();
+
+    public BeforeSaveInterceptor BeforeSave { get; } = new();
 
     /// <summary>
     /// Starts a host on <paramref name="connectionString"/>, migrating the database at start, with blob storage on the
@@ -73,6 +76,7 @@ public sealed class FilesApiFactory : WebApplicationFactory<DKNet.StaticData.Api
     {
         Blob.Reset();
         SaveFailure.Enabled = false;
+        BeforeSave.Reset();
         LogCapture.Clear();
     }
 
@@ -84,7 +88,7 @@ public sealed class FilesApiFactory : WebApplicationFactory<DKNet.StaticData.Api
         {
             TestTokens.TrustTestIssuer(services);
             ControllableBlobService.Wrap(services, Blob);
-            services.ConfigureDbContext<CoreDbContext>(options => options.AddInterceptors(SaveFailure));
+            services.ConfigureDbContext<CoreDbContext>(options => options.AddInterceptors(SaveFailure, BeforeSave));
             if (_timeProvider is not null)
             {
                 services.RemoveAll<TimeProvider>();

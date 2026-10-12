@@ -1,6 +1,6 @@
 namespace DKNet.StaticData.AppServices.Features.Files;
 
-/// <summary>Why a file action did not happen; the route answers with the status each kind names.</summary>
+/// <summary>Why a file or file group action did not happen; the route answers with the status each kind names.</summary>
 public enum FileErrorKind
 {
     /// <summary>The file does not exist for this owner: 404.</summary>
@@ -16,10 +16,19 @@ public enum FileErrorKind
     BytesMissing,
 
     /// <summary>Blob storage cannot be reached: 503.</summary>
-    StorageUnavailable
+    StorageUnavailable,
+
+    /// <summary>The action conflicts with the current state, such as deleting a group with a linked file: 409.</summary>
+    Conflict,
+
+    /// <summary>The <c>If-Match</c> header with the current version tag is missing: 428.</summary>
+    VersionRequired,
+
+    /// <summary>The <c>If-Match</c> header does not name the current version: 412.</summary>
+    VersionStale
 }
 
-/// <summary>A failed file action, as a FluentResults error carrying its <see cref="FileErrorKind" />.</summary>
+/// <summary>A failed file or file group action, as a FluentResults error carrying its <see cref="FileErrorKind" />.</summary>
 public sealed class FileError(FileErrorKind kind, string message) : Error(message)
 {
     #region Properties
