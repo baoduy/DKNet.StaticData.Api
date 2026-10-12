@@ -14,7 +14,8 @@ public static class PostgresSetup
     /// <summary>
     /// The longest one connection attempt may wait, in seconds. With 3 retries the worst case is 4 attempts of 4 s plus
     /// waits of about 0 + 1 + 3 s, about 20 s: a host that drops packets still answers 503 inside the 30 s request
-    /// timeout. Npgsql's default is 15 s, which took about 60 s.
+    /// timeout. Npgsql's default is 15 s, which took about 64 s. Npgsql's <c>Timeout</c> also bounds the wait for a free
+    /// pooled connection, so a pool exhausted for over 4 s fails the call too.
     /// </summary>
     internal const int MaxConnectTimeoutSeconds = 4;
 
