@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DKNet.StaticData.Client.Contracts;
 
 namespace DKNet.StaticData.Client;
@@ -12,6 +14,8 @@ namespace DKNet.StaticData.Client;
 public sealed class StaticDataFileClient : IStaticDataFileClient
 {
     private const string Route = "/v1/files";
+
+    private const string GroupRoute = "/v1/file-groups";
 
     /// <summary>DKNet.AspCore.Idempotency's default header name, which the service keeps.</summary>
     private const string IdempotencyKeyHeader = "X-Idempotency-Key";
@@ -35,15 +39,16 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         Guid? groupId = null,
         CancellationToken ct = default)
     {
-        if (groupId is not null)
-        {
-            throw new NotImplementedException();
-        }
-
-        // The service refuses a form with any part other than the one "file" part.
+        // The service refuses a form with any part other than the one "file" part and an optional "groupId" part.
         using var file = new StreamContent(content);
+        using var group = groupId is { } id ? new StringContent(id.ToString()) : null;
         using var form = new MultipartFormDataContent();
         form.Add(file, "file", fileName);
+        if (group is not null)
+        {
+            form.Add(group, "groupId");
+        }
+
         using var request = new HttpRequestMessage(HttpMethod.Post, WithQuery(Route, owner)) { Content = form };
         request.Headers.Add(IdempotencyKeyHeader, idempotencyKey);
         return await ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
@@ -58,24 +63,10 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         Guid? groupId = null,
         CancellationToken ct = default)
     {
-        if (groupId is not null)
+        var parameters = PageQuery(pageNumber, pageSize, fromDate, toDate);
+        if (groupId is { } group)
         {
-            throw new NotImplementedException();
-        }
-
-        var parameters = new List<(string Key, string Value)>
-        {
-            ("pageNumber", pageNumber.ToString(CultureInfo.InvariantCulture)),
-            ("pageSize", pageSize.ToString(CultureInfo.InvariantCulture))
-        };
-        if (fromDate is { } from)
-        {
-            parameters.Add(("fromDate", from.ToString("O", CultureInfo.InvariantCulture)));
-        }
-
-        if (toDate is { } to)
-        {
-            parameters.Add(("toDate", to.ToString("O", CultureInfo.InvariantCulture)));
+            parameters.Add(("groupId", group.ToString()));
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery(Route, owner, parameters));
@@ -107,19 +98,39 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
     }
 
-    public Task<StaticDataFile> LinkAsync(string owner, Guid fileId, Guid? groupId, int version, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+    public async Task<StaticDataFile> LinkAsync(
+        string owner,
+        Guid fileId,
+        Guid? groupId,
+        int version,
+        CancellationToken ct = default)
+    {
+        // The service needs the field present, so a null group goes out as "groupId":null and unlinks the file.
+        using var request = new HttpRequestMessage(HttpMethod.Put, WithQuery($"{Route}/{fileId}/group", owner))
+        {
+            Content = JsonContent.Create(new LinkBody(groupId), options: JsonOptions)
+        };
+        AddVersion(request, version);
+        return await ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataFileGroup> CreateGroupAsync(
+    public async Task<StaticDataFileGroup> CreateGroupAsync(
         string owner,
         string idempotencyKey,
         string name,
         string? purpose = null,
         string? externalRef = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, WithQuery(GroupRoute, owner))
+        {
+            Content = JsonContent.Create(new GroupBody(name, purpose, externalRef), options: JsonOptions)
+        };
+        request.Headers.Add(IdempotencyKeyHeader, idempotencyKey);
+        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataFileGroupPage> ListGroupsAsync(
+    public async Task<StaticDataFileGroupPage> ListGroupsAsync(
         string owner,
         int pageNumber,
         int pageSize,
@@ -127,24 +138,80 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         DateTimeOffset? toDate = null,
         string? purpose = null,
         string? externalRef = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        var parameters = PageQuery(pageNumber, pageSize, fromDate, toDate);
+        if (purpose is not null)
+        {
+            parameters.Add(("purpose", purpose));
+        }
 
-    public Task<StaticDataFileGroup> GetGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        if (externalRef is not null)
+        {
+            parameters.Add(("externalRef", externalRef));
+        }
 
-    public Task<StaticDataFileGroup> UpdateGroupAsync(
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery(GroupRoute, owner, parameters));
+        return await ReadAsync<StaticDataFileGroupPage>(request, ct).ConfigureAwait(false);
+    }
+
+    public async Task<StaticDataFileGroup> GetGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{GroupRoute}/{groupId}", owner));
+        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+    }
+
+    public async Task<StaticDataFileGroup> UpdateGroupAsync(
         string owner,
         Guid groupId,
         int version,
         string name,
         string? purpose = null,
         string? externalRef = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, WithQuery($"{GroupRoute}/{groupId}", owner))
+        {
+            Content = JsonContent.Create(new GroupBody(name, purpose, externalRef), options: JsonOptions)
+        };
+        AddVersion(request, version);
+        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task DeleteGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+    public async Task DeleteGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{GroupRoute}/{groupId}", owner));
+        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The page, then each date that is given, both written invariant in round-trip form.</summary>
+    private static List<(string Key, string Value)> PageQuery(
+        int pageNumber,
+        int pageSize,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate)
+    {
+        var parameters = new List<(string Key, string Value)>
+        {
+            ("pageNumber", pageNumber.ToString(CultureInfo.InvariantCulture)),
+            ("pageSize", pageSize.ToString(CultureInfo.InvariantCulture))
+        };
+        if (fromDate is { } from)
+        {
+            parameters.Add(("fromDate", from.ToString("O", CultureInfo.InvariantCulture)));
+        }
+
+        if (toDate is { } to)
+        {
+            parameters.Add(("toDate", to.ToString("O", CultureInfo.InvariantCulture)));
+        }
+
+        return parameters;
+    }
+
+    /// <summary>Sends <paramref name="version"/> as the one strong tag <c>If-Match: "&lt;version&gt;"</c> the service matches.</summary>
+    private static void AddVersion(HttpRequestMessage request, int version) =>
+        request.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{version.ToString(CultureInfo.InvariantCulture)}\""));
 
     /// <summary><paramref name="path"/> with the owner first, then <paramref name="more"/>, every value URL-encoded.</summary>
     private static string WithQuery(string path, string owner, params IReadOnlyList<(string Key, string Value)> more) =>
@@ -193,4 +260,13 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
             return null;
         }
     }
+
+    /// <summary>The group create and update body; an empty purpose or external reference is left out.</summary>
+    private sealed record GroupBody(
+        string Name,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Purpose,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ExternalRef);
+
+    /// <summary>The link body; <see cref="GroupId"/> is always written, <see langword="null"/> included.</summary>
+    private sealed record LinkBody(Guid? GroupId);
 }

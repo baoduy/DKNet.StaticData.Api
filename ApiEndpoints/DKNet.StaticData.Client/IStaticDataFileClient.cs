@@ -3,8 +3,9 @@ using DKNet.StaticData.Client.Contracts;
 namespace DKNet.StaticData.Client;
 
 /// <summary>
-/// One typed call per file route of the DKNet StaticData service. Every call takes the owner the file is kept
-/// under; the upload also takes the idempotency key. A non-success answer throws <see cref="StaticDataApiException"/>.
+/// One typed call per file and file group route of the DKNet StaticData service. Every call takes the owner the file
+/// or group is kept under; the upload and the group create also take the idempotency key, and the link and the group
+/// update take the version they send as <c>If-Match</c>. A non-success answer throws <see cref="StaticDataApiException"/>.
 /// </summary>
 public interface IStaticDataFileClient
 {

@@ -10,16 +10,20 @@ public sealed class RecordingHandler : DelegatingHandler
 {
     public HttpRequestMessage? LastRequest { get; private set; }
 
+    /// <summary>The last request's body, read before the client disposes it; <see langword="null"/> when it had none.</summary>
+    public string? LastBody { get; private set; }
+
     public string ResponseBody { get; set; } = "{}";
 
     public HttpStatusCode ResponseStatusCode { get; set; } = HttpStatusCode.OK;
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         LastRequest = request;
-        return Task.FromResult(new HttpResponseMessage(ResponseStatusCode)
+        LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        return new HttpResponseMessage(ResponseStatusCode)
         {
             Content = new StringContent(ResponseBody, Encoding.UTF8, "application/json")
-        });
+        };
     }
 }
