@@ -18,6 +18,9 @@ public sealed record StaticDataFile
 
     public int Version { get; init; }
 
+    /// <summary>The group the file is linked to; empty when it has none.</summary>
+    public Guid? GroupId { get; init; }
+
     public string? CreatedBy { get; init; }
 
     public DateTimeOffset CreatedOn { get; init; }

@@ -32,8 +32,14 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         string idempotencyKey,
         string fileName,
         Stream content,
+        Guid? groupId = null,
         CancellationToken ct = default)
     {
+        if (groupId is not null)
+        {
+            throw new NotImplementedException();
+        }
+
         // The service refuses a form with any part other than the one "file" part.
         using var file = new StreamContent(content);
         using var form = new MultipartFormDataContent();
@@ -49,8 +55,14 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         int pageSize,
         DateTimeOffset? fromDate = null,
         DateTimeOffset? toDate = null,
+        Guid? groupId = null,
         CancellationToken ct = default)
     {
+        if (groupId is not null)
+        {
+            throw new NotImplementedException();
+        }
+
         var parameters = new List<(string Key, string Value)>
         {
             ("pageNumber", pageNumber.ToString(CultureInfo.InvariantCulture)),
@@ -94,6 +106,45 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{Route}/{fileId}", owner));
         using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
     }
+
+    public Task<StaticDataFile> LinkAsync(string owner, Guid fileId, Guid? groupId, int version, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataFileGroup> CreateGroupAsync(
+        string owner,
+        string idempotencyKey,
+        string name,
+        string? purpose = null,
+        string? externalRef = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataFileGroupPage> ListGroupsAsync(
+        string owner,
+        int pageNumber,
+        int pageSize,
+        DateTimeOffset? fromDate = null,
+        DateTimeOffset? toDate = null,
+        string? purpose = null,
+        string? externalRef = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataFileGroup> GetGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataFileGroup> UpdateGroupAsync(
+        string owner,
+        Guid groupId,
+        int version,
+        string name,
+        string? purpose = null,
+        string? externalRef = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task DeleteGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
 
     /// <summary><paramref name="path"/> with the owner first, then <paramref name="more"/>, every value URL-encoded.</summary>
     private static string WithQuery(string path, string owner, params IReadOnlyList<(string Key, string Value)> more) =>

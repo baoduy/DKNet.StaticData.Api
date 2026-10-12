@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using DKNet.StaticData.App.Tests.FileGroups.Support;
 using DKNet.StaticData.App.Tests.Files.Support;
 using DKNet.StaticData.App.TestSupport;
 using DKNet.StaticData.Client;
@@ -54,6 +55,68 @@ public sealed class TypedClientTests(FilesHost hosts) : IClassFixture<FilesHost>
 
         error.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         error.ProblemDetails.ShouldNotBeNull().Status.ShouldBe(404);
+    }
+
+    /// <summary>Scenario: A calling service uses the typed client for every group route (spec DRK-2235 §5).</summary>
+    [Theory]
+    [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
+    public async Task ACallingServiceUsesTheTypedClientForEveryGroupRoute(TestDatabase database)
+    {
+        var api = await hosts.OnAsync(database);
+        using var services = ClientOf(api, Callers.OnboardingSvc);
+        var client = services.GetRequiredService<IStaticDataFileClient>();
+
+        var created = await client.CreateGroupAsync("customer-1", "group-1", "Onboarding pack");
+        var uploaded = await client.UploadAsync(
+            "customer-1", "upload-1", "passport.pdf", new MemoryStream(Bytes.Of(1024)), groupId: created.GroupId);
+        var groupFiles = await client.ListAsync("customer-1", pageNumber: 1, pageSize: 10, groupId: created.GroupId);
+        var renamed = await client.UpdateGroupAsync("customer-1", created.GroupId, created.Version, "Onboarding pack 2");
+        var unlinked = await client.LinkAsync("customer-1", uploaded.FileId, groupId: null, uploaded.Version);
+        await client.DeleteGroupAsync("customer-1", created.GroupId);
+
+        created.Name.ShouldBe("Onboarding pack");
+        created.Owner.ShouldBe("customer-1");
+        created.Version.ShouldBe(1);
+        created.Purpose.ShouldBeNullOrEmpty(); // the client reads the missing purpose field as empty
+        uploaded.GroupId.ShouldBe(created.GroupId);
+        groupFiles.Items.Select(f => f.FileId).ShouldBe([uploaded.FileId]);
+        renamed.Name.ShouldBe("Onboarding pack 2");
+        renamed.Version.ShouldBe(2);
+        unlinked.GroupId.ShouldBeNull();
+        unlinked.Version.ShouldBe(2);
+        (await api.GroupNamesAsync("customer-1")).ShouldBeEmpty();
+    }
+
+    public static IEnumerable<object[]> GroupErrors => Databases.With(
+        ["renames \"Onboarding pack\" with the version 1", HttpStatusCode.PreconditionFailed],
+        ["deletes \"Onboarding pack\"", HttpStatusCode.Conflict],
+        ["reads an unknown group for owner \"customer-1\"", HttpStatusCode.NotFound]);
+
+    /// <summary>Scenario Outline: The typed client turns a group error into a typed error (spec DRK-2235 §5).</summary>
+    [Theory]
+    [MemberData(nameof(GroupErrors))]
+    public async Task TheTypedClientTurnsAGroupErrorIntoATypedError(TestDatabase database, string action, HttpStatusCode status)
+    {
+        var api = await hosts.OnAsync(database);
+        var groupId = await api.HasGroupAsync("customer-1", "Onboarding pack");
+        await api.RaiseToVersion2Async("customer-1", groupId, "Onboarding pack");
+        await api.HasFileInGroupAsync("customer-1", "passport.pdf", groupId);
+        using var services = ClientOf(api, Callers.OnboardingSvc);
+        var client = services.GetRequiredService<IStaticDataFileClient>();
+
+        Func<Task> call = action switch
+        {
+            "renames \"Onboarding pack\" with the version 1" => () =>
+                client.UpdateGroupAsync("customer-1", groupId, version: 1, "Pack 2"),
+            "deletes \"Onboarding pack\"" => () => client.DeleteGroupAsync("customer-1", groupId),
+            "reads an unknown group for owner \"customer-1\"" => () => client.GetGroupAsync("customer-1", Guid.NewGuid()),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+        };
+
+        var error = await Should.ThrowAsync<StaticDataApiException>(call);
+
+        error.StatusCode.ShouldBe(status);
+        error.ProblemDetails.ShouldNotBeNull().Status.ShouldBe((int)status);
     }
 
     /// <summary>

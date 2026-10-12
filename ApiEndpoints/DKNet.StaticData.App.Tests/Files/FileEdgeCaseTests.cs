@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+using DKNet.StaticData.App.Tests.FileGroups.Support;
 using DKNet.StaticData.App.Tests.Files.Support;
 using DKNet.StaticData.App.TestSupport;
 using Microsoft.Extensions.Logging;
@@ -7,7 +10,8 @@ namespace DKNet.StaticData.App.Tests.Files;
 /// <summary>
 /// Brief DRK-2209 §6a rows the spec's scenarios leave open — D5 (file names) and D9 (a provider that reports missing
 /// bytes by throwing <see cref="FileNotFoundException" />, as the cloud providers do, rather than returning none) — and
-/// §9 Q2: a database that refuses a save answers 500, one that cannot be reached 503; each is logged as an error.
+/// §9 Q2: a database that refuses a save answers 500, one that cannot be reached 503 — on both databases and on the
+/// group and link routes too (spec DRK-2235 §5) — each logged as an error.
 /// </summary>
 public sealed class FileEdgeCaseTests(FilesHost hosts) : IClassFixture<FilesHost>
 {
@@ -116,21 +120,54 @@ public sealed class FileEdgeCaseTests(FilesHost hosts) : IClassFixture<FilesHost
             e.Level == LogLevel.Error && e.Message == "The database failed: DbUpdateException");
     }
 
+    public static IEnumerable<object[]> UnreachableDatabaseActions => Databases.With(
+        ["lists the files"],
+        ["lists the groups"],
+        ["creates the group \"Pack 2\""],
+        ["links \"passport.pdf\" to \"Onboarding pack\" with the version tag \"1\""]);
+
+    /// <summary>Scenario Outline: A database that cannot be reached answers 503 (spec DRK-2235 §5, Slice 2 fixes).</summary>
     /// <remarks>
-    /// SQL Server only: on Postgres, EF Core's retries on a stopped server outlast the 30-second request timeout, which
-    /// answers 504 first.
+    /// The group is made only for the rows on a group route or the link route, which need one; the file rows run on the
+    /// slice 2 routes alone.
     /// </remarks>
-    [Fact]
-    public async Task ADatabaseThatCannotBeReachedAnswers503()
+    [Theory]
+    [MemberData(nameof(UnreachableDatabaseActions))]
+    public async Task ADatabaseThatCannotBeReachedAnswers503(TestDatabase database, string action)
     {
-        var api = await hosts.OnOwnServerAsync(TestDatabase.SqlServer);
+        var api = await hosts.OnOwnServerAsync(database);
         var fileId = await api.HasFileAsync("customer-1", "passport.pdf");
+        var groupId = action == "lists the files" ? Guid.Empty : await api.HasGroupAsync("customer-1", "Onboarding pack");
         await api.Server.StopAsync();
+        api.Host.LogCapture.Clear();
+        var traceId = ActivityTraceId.CreateRandom().ToHexString();
+        var traceParent = $"00-{traceId}-{ActivitySpanId.CreateRandom().ToHexString()}-01";
+        var clock = Stopwatch.StartNew();
 
-        using var response = await api.ReadAsync(Callers.ReportSvc, "customer-1", fileId);
+        using var response = action switch
+        {
+            "lists the files" => await api.SendAsync(HttpMethod.Get, FilesApi.Route + FilesApi.OwnerQuery("customer-1"),
+                Callers.OnboardingSvc, traceParent: traceParent),
+            "lists the groups" => await api.ListGroupsAsync(Callers.OnboardingSvc, "customer-1", traceParent: traceParent),
+            "creates the group \"Pack 2\"" => await api.CreateGroupAsync(
+                Callers.OnboardingSvc, "customer-1", FileGroupsApi.GroupBody("Pack 2"), FilesApi.NewKey(), traceParent),
+            "links \"passport.pdf\" to \"Onboarding pack\" with the version tag \"1\"" => await api.LinkAsync(
+                Callers.OnboardingSvc, "customer-1", fileId, FileGroupsApi.LinkBody(groupId), "\"1\"", traceParent),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+        };
 
+        clock.Stop();
         await response.ShouldBeProblemDetailsAsync(HttpStatusCode.ServiceUnavailable);
+        clock.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
+        var error = api.Host.LogCapture.Entries
+            .Where(e => e.Level == LogLevel.Error && DatabaseFailed().IsMatch(e.Message))
+            .ShouldHaveSingleItem("no single Error log entry \"The database failed: <exception type>\"");
+        error.Names(traceId).ShouldBeTrue($"\"{error.Message}\" does not carry the call's trace id {traceId}");
+        error.Names("onboarding-svc").ShouldBeTrue($"\"{error.Message}\" does not name the caller id");
     }
+
+    /// <summary>The file routes' Error entry for the database: it names the database and the exception type.</summary>
+    private static Regex DatabaseFailed() => new(@"^The database failed: \w+Exception$", RegexOptions.None, TimeSpan.FromSeconds(1));
 
     [Theory]
     [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]

@@ -11,7 +11,8 @@ using Microsoft.Extensions.Options;
 namespace DKNet.StaticData.App.Tests.Unit.Files;
 
 /// <summary>
-/// Spec DRK-2206 §5 "Limits and settings": each file route's request body limit and timeout, as the started service
+/// Spec DRK-2206 §5 "Limits and settings" and spec DRK-2235 §5 "Answers and limits": each file route's, group route's and
+/// the link route's request body limit and timeout, as the started service
 /// applies them — the route's own limit when it sets one, else the service-wide Kestrel body limit and default request
 /// timeout. Each route must exist first, so a route that is missing never passes on the service-wide defaults.
 /// </summary>
@@ -22,7 +23,14 @@ public sealed class RouteLimitsTests(FilesHost hosts) : IClassFixture<FilesHost>
         { "upload route", 51_000_000, 300 },
         { "download route", 1_048_576, 300 },
         { "list route", 1_048_576, 30 },
-        { "delete route", 1_048_576, 30 }
+        { "delete route", 1_048_576, 30 },
+        // spec DRK-2235 §5: the group routes and the link route keep the default request limits
+        { "group create route", 1_048_576, 30 },
+        { "group list route", 1_048_576, 30 },
+        { "group read route", 1_048_576, 30 },
+        { "group update route", 1_048_576, 30 },
+        { "group delete route", 1_048_576, 30 },
+        { "link route", 1_048_576, 30 }
     };
 
     /// <summary>Scenario Outline: Each file route has its own request limits.</summary>
@@ -38,6 +46,12 @@ public sealed class RouteLimitsTests(FilesHost hosts) : IClassFixture<FilesHost>
             "download route" => ("GET", @"files/\{fileId[^}]*\}/content/?$"),
             "list route" => ("GET", @"files/?$"),
             "delete route" => ("DELETE", @"files/\{fileId[^}]*\}/?$"),
+            "group create route" => ("POST", @"file-groups/?$"),
+            "group list route" => ("GET", @"file-groups/?$"),
+            "group read route" => ("GET", @"file-groups/\{groupId[^}]*\}/?$"),
+            "group update route" => ("PUT", @"file-groups/\{groupId[^}]*\}/?$"),
+            "group delete route" => ("DELETE", @"file-groups/\{groupId[^}]*\}/?$"),
+            "link route" => ("PUT", @"files/\{fileId[^}]*\}/group/?$"),
             _ => throw new ArgumentOutOfRangeException(nameof(route), route, null)
         };
 
