@@ -230,7 +230,10 @@ This service consumes no events.
 | Microsoft.AspNetCore.Authentication.JwtBearer | NuGet | This service → package | Bearer token validation |
 | OIDC issuer, database, blob storage | Runtime services | This service → service | See Consumed APIs |
 
-- DKNet packages use the release DKNet.Accounts.Api pins (13.2.5 today), and move with it.
+- All DKNet packages of this service use one and the same DKNet release (ADR-0017).
+- That release may be a later patch release than the one DKNet.Accounts.Api pins. This service does not wait for DKNet.Accounts.Api to move.
+- Slice 3 moves every DKNet package to 13.2.7, the latest release on 2026-10-12.
+- Why: a fix this service needs shipped in a DKNet release that DKNet.Accounts.Api does not need. On 13.2.5, idempotency keys of 151 to 255 characters answer 500 here. DKNet.Accounts.Api uses the Redis store, which the bug does not affect.
 - Every arrow points from this service to a library or an infrastructure service. No cycle exists.
 - The template's own packages stay as the scaffold brings them.
 

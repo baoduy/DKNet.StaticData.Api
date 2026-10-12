@@ -9,7 +9,7 @@ DKNet StaticData stores files and UI display settings for other backend services
 | **Bounded context** | Static Data |
 | **Stack** | .NET 10 / ASP.NET Core minimal API with DKNet packages, scaffolded from DKNet.Templates (`dknet-minimal`), EF Core on Postgres or SQL Server, Aspire AppHost for local runs |
 | **Status** | Active |
-| **Design revision** | 3 |
+| **Design revision** | 4 |
 | **Owner** | drunkcoding |
 | **Root ticket** | DRK-2184 |
 
@@ -37,6 +37,7 @@ DKNet StaticData stores files and UI display settings for other backend services
   - [ADR-0014](adr/0014-typed-client-package.md) — Ship the typed client package `DKNet.StaticData.Client` to GitHub Packages, from slice 2.
   - [ADR-0015](adr/0015-anonymous-health-detail.md) — `/healthz/detail` is anonymous, like `/healthz`.
   - [ADR-0016](adr/0016-two-app-roles-checked-by-the-service.md) — 2 app roles, checked by the service: `staticdata.read` for every `GET` and `staticdata.write` for every `POST`, `PUT` and `DELETE` under `/v1`.
+  - [ADR-0017](adr/0017-own-dknet-release.md) — All DKNet packages use one DKNet release, which may be a later patch release than DKNet.Accounts.Api's.
 - [diagrams/](diagrams/) — archify IR (`.json`) and render (`.svg`) for every diagram.
 
 ## Runtime architecture
