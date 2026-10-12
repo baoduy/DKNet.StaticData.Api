@@ -83,10 +83,13 @@ public sealed class FileListQueryTests(FilesHost hosts) : IClassFixture<FilesHos
         FileGroupsApi.Names(await response.JsonAsync(), "fileName").ShouldBe(["created.pdf", "updated.pdf"], ignoreOrder: true);
     }
 
-    /// <summary>Files created at the same time are listed newest id first, so every page is stable.</summary>
+    /// <summary>
+    /// The creation time orders the list; files created at the same time keep one order across pages, so each is on
+    /// exactly one page. SQL Server and Postgres sort ids differently, so which of the 2 comes first is not pinned.
+    /// </summary>
     [Theory]
     [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
-    public async Task ThePageNumberAndSizeAreKeptAndATieIsListedNewestIdFirst(TestDatabase database)
+    public async Task ThePageNumberAndSizeAreKeptAndTheCreationTimeOrdersTheList(TestDatabase database)
     {
         var api = await hosts.OnAsync(database);
         var sameTime = new DateTimeOffset(2026, 6, 15, 9, 0, 0, TimeSpan.Zero);
@@ -95,16 +98,22 @@ public sealed class FileListQueryTests(FilesHost hosts) : IClassFixture<FilesHos
             await StoredFileRows.SetActivityAsync(api, "StoredFile", await api.HasFileAsync("customer-1", name), sameTime, updatedOn: null);
         }
 
-        // uploaded last, created first: the creation time orders the list, the id only breaks a tie
+        // uploaded last, created first
         await StoredFileRows.SetActivityAsync(
             api, "StoredFile", await api.HasFileAsync("customer-1", "c.pdf"), sameTime.AddDays(-1), updatedOn: null);
 
-        using var response = await api.ListAsync(Callers.ReportSvc, "customer-1", "&pageNumber=2&pageSize=1");
+        var pages = new List<string>();
+        for (var pageNumber = 1; pageNumber <= 3; pageNumber++)
+        {
+            using var response = await api.ListAsync(Callers.ReportSvc, "customer-1", $"&pageNumber={pageNumber}&pageSize=1");
+            await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+            var page = await response.JsonAsync();
+            page.GetProperty("pageNumber").GetInt32().ShouldBe(pageNumber);
+            page.GetProperty("pageSize").GetInt32().ShouldBe(1);
+            pages.AddRange(FileGroupsApi.Names(page, "fileName"));
+        }
 
-        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        var page = await response.JsonAsync();
-        page.GetProperty("pageNumber").GetInt32().ShouldBe(2);
-        page.GetProperty("pageSize").GetInt32().ShouldBe(1);
-        FileGroupsApi.Names(page, "fileName").ShouldBe(["a.pdf"]);
+        pages.Take(2).ShouldBe(["a.pdf", "b.pdf"], ignoreOrder: true);
+        pages.Skip(2).ShouldBe(["c.pdf"]);
     }
 }
