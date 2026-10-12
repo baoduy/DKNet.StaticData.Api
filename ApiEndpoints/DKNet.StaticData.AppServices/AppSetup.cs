@@ -31,6 +31,8 @@ public static class AppSetup
             .AddScoped<ReadFileHandler>()
             .AddScoped<DownloadFileHandler>()
             .AddScoped<DeleteFileHandler>()
+            .AddScoped<LinkFileHandler>()
+            .AddScoped<ListFilesHandler>()
             .AddScoped<CreateFileGroupHandler>()
             .AddScoped<ListFileGroupsHandler>()
             .AddScoped<ReadFileGroupHandler>()
