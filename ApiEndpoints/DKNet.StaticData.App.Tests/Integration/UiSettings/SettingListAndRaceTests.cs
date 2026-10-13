@@ -208,13 +208,17 @@ public sealed class SettingListAndRaceTests(FilesHost hosts) : IClassFixture<Fil
         ["setting group", "one after the other"],
         ["setting group", "at the same moment"]);
 
-    /// <summary>Spec DRK-2245 "Must stay true": no log entry holds the owner, also when the database refuses a duplicate key.</summary>
+    /// <summary>
+    /// Spec DRK-2245 "Must stay true": no log entry and no trace holds the owner, also when the database refuses a
+    /// duplicate key.
+    /// </summary>
     [Theory]
     [MemberData(nameof(Duplicates))]
-    public async Task ADuplicateKeyTheDatabaseRefusesLogsNoOwner(TestDatabase database, string record, string timing)
+    public async Task ADuplicateKeyTheDatabaseRefusesLogsAndTracesNoOwner(TestDatabase database, string record, string timing)
     {
         var api = await hosts.OnAsync(database);
         api.Host.LogCapture.Clear();
+        using var traces = new TestTraceCapture();
         Func<Task<HttpResponseMessage>> create = record == "setting"
             ? () => api.CreateSettingAsync(Callers.LayoutSvc, "backoffice-web", UiSettingsApi.SettingBody("customers.list.table"))
             : () => api.CreateSettingGroupAsync(Callers.LayoutSvc, "backoffice-web", SettingGroupsApi.GroupBody("Customer screens"));
@@ -243,5 +247,6 @@ public sealed class SettingListAndRaceTests(FilesHost hosts) : IClassFixture<Fil
         }
 
         api.Host.LogCapture.Entries.ShouldNotContain(e => e.Holds("backoffice-web"), "a log entry holds the owner");
+        traces.Holds("backoffice-web").ShouldBeFalse("a trace holds the owner");
     }
 }
