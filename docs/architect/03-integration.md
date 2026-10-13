@@ -27,8 +27,8 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 - `staticdata.write` does not include reading. An app that reads and writes holds both roles.
 - A valid token with a caller id but without the role the route needs answers 403, as problem details. Nothing changes.
 - Order of answers: 401 for the token and the caller id, then 403 for the role, then every input check (`owner`, headers, body, `If-Match`). A 403 reserves no idempotency key.
-- The `owner` query parameter is required: 1 to 255 characters, not only white space, no control characters. It is URL-encoded, so any other character is allowed (ADR-0005).
-- The owner is never trimmed or case-folded. It compares exactly.
+- The `owner` query parameter is required: 1 to 255 characters after trimming, no control characters. It is URL-encoded, so any other character is allowed (ADR-0005).
+- The owner is trimmed (Text rules below) and never case-folded. It compares exactly: owner `customer-1 ` is owner `customer-1`, on both databases (ADR-0018).
 - A record of another owner answers 404, the same as a record that does not exist.
 - Errors answer as problem details (`application/problem+json`).
 - A JSON answer leaves out every field that has no value. It never writes such a field as `null`. This is the scaffold's JSON rule, and it holds on every route.
@@ -36,10 +36,33 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 - The rule covers answer fields only. A request body may still send `null` where a route says so. A setting `value` is kept and returned exactly as sent, `null` values inside it included.
 - Every record answer carries `version` in its body and `ETag: "<version>"` as a header. An idempotent replay is the one exception (see check 4 of the upload).
 - Every `PUT` needs `If-Match: "<version>"`. No `If-Match` answers 428. A stale one answers 412 and changes nothing (ADR-0010).
-- List routes page with `pageNumber` and `pageSize`, as DKNet's list paging does, newest record first.
+- List routes page with `pageNumber` and `pageSize`, as DKNet's list paging does, newest record first. A page holds up to 1,000 items, DKNet's default and limit; this service does not change it.
 - DKNet's default 3-month activity window is off: `DKNet:ListQuery:DefaultActivityWindowMonths` = 0. A list returns every matching record of the owner, however old.
 - Optional `fromDate` and `toDate` narrow a list to records created or updated in that range. They are DKNet's list parameters; a caller that sends neither gets all records.
 - JSON routes keep the scaffold's request body limit of 1,048,576 bytes and its 30-second request timeout.
+
+### Text rules for every `/v1` route
+
+- The service trims the white space at the start and the end of every text a caller sends (ADR-0018):
+  - the owner on every route
+  - the file name at upload
+  - the file group name, purpose and external reference
+  - the setting key and setting type
+  - the setting group name and description
+  - every text list filter: `purpose`, `externalRef` and `settingKey`
+- 2 texts are never trimmed:
+  - The setting value. It is kept byte for byte.
+  - The idempotency key. Its format stays strict, so a space still answers 400.
+- The control character check runs on the text as sent, before the trim. A trailing tab still answers 400.
+- Length limits count the trimmed text.
+- A required text that is empty after trimming answers 400.
+- An optional text that holds only spaces answers 400. To leave an optional field empty, the caller leaves it out or sends `null`.
+- Case is kept as sent. Comparison stays exact for case and accents.
+- Display texts allow only letters a-z and A-Z, digits 0-9, spaces, `-` and `_` (ADR-0019). They are the file group name, the setting group name and the setting group description.
+  - Allowed: `Onboarding pack 2026`, `Pack-2`, `my_layouts`.
+  - 400: `Café`, `Pack, v2.`, `Pack/2`.
+- Every other text allows any character except control characters.
+- Every text check answers 400 as problem details.
 
 ### Routes
 
@@ -57,12 +80,13 @@ This service calls no other DKNet service at runtime. No DKNet service is a buil
 | PUT | `/v1/file-groups/{groupId}` | Change name, purpose or external reference. | Bearer token, `staticdata.write` |
 | DELETE | `/v1/file-groups/{groupId}` | Delete an empty file group. | Bearer token, `staticdata.write` |
 | POST | `/v1/ui-settings` | Create one UI setting. | Bearer token, `staticdata.write` |
-| GET | `/v1/ui-settings` | List the owner's settings; optional `appKey`, `settingKey` and `groupId` filters, exact match. | Bearer token, `staticdata.read` |
+| GET | `/v1/ui-settings` | List the owner's settings; optional `settingKey` and `groupId` filters, exact match. | Bearer token, `staticdata.read` |
 | GET | `/v1/ui-settings/{settingId}` | Read one UI setting. | Bearer token, `staticdata.read` |
 | PUT | `/v1/ui-settings/{settingId}` | Replace a setting's type, group, value and schema version. | Bearer token, `staticdata.write` |
 | DELETE | `/v1/ui-settings/{settingId}` | Delete one UI setting. | Bearer token, `staticdata.write` |
+| DELETE | `/v1/ui-settings/all` | Erase every UI setting and setting group of the owner (ADR-0021). | Bearer token, `staticdata.write` |
 | POST | `/v1/ui-setting-groups` | Create a setting group. | Bearer token, `staticdata.write` |
-| GET | `/v1/ui-setting-groups` | List the owner's setting groups; optional `appKey` filter. | Bearer token, `staticdata.read` |
+| GET | `/v1/ui-setting-groups` | List the owner's setting groups; no filter. | Bearer token, `staticdata.read` |
 | GET | `/v1/ui-setting-groups/{groupId}` | Read one setting group. | Bearer token, `staticdata.read` |
 | PUT | `/v1/ui-setting-groups/{groupId}` | Change name or description. | Bearer token, `staticdata.write` |
 | DELETE | `/v1/ui-setting-groups/{groupId}` | Delete an empty setting group. | Bearer token, `staticdata.write` |
@@ -80,7 +104,7 @@ The scaffold's OpenAPI and Scalar pages stay behind its `EnableSwagger` flag, wh
 - It reads a missing answer field as empty.
 - It never gets, keeps or logs a credential. The consuming app attaches its own bearer token.
 - It holds the public contract only, and no server code.
-- Coverage grows by slice: file routes in slice 2, file group routes in slice 3, UI settings routes in slice 4. Each slice updates it with its routes.
+- Coverage grows by slice: file routes in slice 2, file group routes in slice 3, UI settings routes in slice 4. Each slice updates it with its routes. Slice 4 adds 11 calls: 6 for settings, the erase included, and 5 for setting groups.
 - Restoring it needs a GitHub token with `read:packages`.
 
 ### `POST /v1/files?owner=<owner>`
@@ -114,7 +138,7 @@ Checks, in order. The first failure answers and nothing is stored:
    - after the first upload answered an error: 409 until that key's 330-second reservation ends, then the upload runs again. A caller that got an error answer sends a new key.
 5. Content type — 415.
 6. Exactly 1 `file` part and no unknown part — 400.
-7. File name: 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
+7. File name: the text rules apply; 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
 8. Size: 0 bytes answers 400. Over 50,000,000 bytes answers 413.
 9. `groupId`, when sent, names a file group of this owner — otherwise 404.
 
@@ -156,7 +180,7 @@ The storage key is never in an answer.
 ### `POST /v1/file-groups?owner=<owner>`
 
 - Needs `X-Idempotency-Key`, with the same rule as the upload.
-- Body: `name` (string, 1 to 100, required), `purpose` (string, up to 100, optional), `externalRef` (string, up to 255, optional).
+- Body: `name` (display text, 1 to 100, required), `purpose` (string, up to 100, optional), `externalRef` (string, up to 255, optional). All 3 follow the text rules.
 - Answer: 201 with the group: `groupId`, `owner`, `name`, `purpose`, `externalRef`, `version` and the 4 audit fields.
 - `PUT /v1/file-groups/{groupId}` takes the same 3 fields and needs `If-Match`.
 - `DELETE /v1/file-groups/{groupId}` answers 204, or 409 while a file is linked.
@@ -167,19 +191,18 @@ Body fields:
 
 | Field | Type | Required | Rules |
 |---|---|---|---|
-| `appKey` | string | Yes | 1 to 100 characters, no control characters. |
-| `settingKey` | string | Yes | 1 to 200 characters, no control characters. |
-| `settingType` | string | Yes | 1 to 50 characters, no control characters. |
-| `groupId` | GUID | No | Names a setting group of the same owner and app key. |
+| `settingKey` | string | Yes | 1 to 200 characters, trimmed, no control characters. |
+| `settingType` | string | Yes | 1 to 50 characters, trimmed, no control characters. |
+| `groupId` | GUID | No | Names a setting group of the same owner. |
 | `value` | any JSON | Yes | Not `null`. At most 65,536 bytes as UTF-8. |
 | `schemaVersion` | integer | No | 1 or more. Default 1. |
 
-- Answer: 201 with the setting: `settingId`, `owner`, the 6 fields above, `version` and the 4 audit fields.
-- 409 when a setting already exists for this owner, app key and setting key.
-- 404 when `groupId` names no setting group of this owner. 409 when the group has another app key.
+- Answer: 201 with the setting: `settingId`, `owner`, the 5 fields above, `version` and the 4 audit fields.
+- 409 when a setting already exists for this owner and setting key.
+- 404 when `groupId` names no setting group of this owner.
 - No idempotency key: the unique key already stops a duplicate.
 
-`PUT /v1/ui-settings/{settingId}` takes `settingType`, `groupId`, `value` and `schemaVersion`, with the same rules, and needs `If-Match`. `appKey` and `settingKey` never change.
+`PUT /v1/ui-settings/{settingId}` takes `settingType`, `groupId`, `value` and `schemaVersion`, with the same rules, and needs `If-Match`. `settingKey` never changes.
 
 Example value for a table layout, kept exactly as sent:
 
@@ -195,10 +218,29 @@ Example value for a table layout, kept exactly as sent:
 }
 ```
 
+### `GET /v1/ui-settings?owner=<owner>`
+
+- Optional filters `settingKey` and `groupId`. Each matches exactly, and they combine.
+- A `groupId` that names no setting group, or a group of another owner, gives 200 with an empty list.
+- A `groupId` that is not a GUID answers 400.
+- Each list item is the full setting, value included.
+- `GET /v1/ui-setting-groups` takes no filter.
+- Both lists show the newest first and take `fromDate` and `toDate`, as every list does.
+
+### `DELETE /v1/ui-settings/all?owner=<owner>`
+
+- Deletes every setting of the owner, then every setting group of the owner. All or nothing (ADR-0021).
+- Answers 204, also when there was nothing to delete.
+- Files, file groups and other owners are untouched.
+- 409 when a setting is saved into a group during the erase. Nothing changes; the caller repeats the call.
+- The owner stays in the query, so request logs and traces never hold it (05-quality, Personal data).
+- `all` is never a GUID, so it can never be read as a setting id.
+- It writes no log entry.
+
 ### `POST /v1/ui-setting-groups?owner=<owner>`
 
-- Body: `appKey` (string, 1 to 100, required), `name` (string, 1 to 100, required), `description` (string, up to 500, optional).
-- Answer: 201. 409 when a group with this owner, app key and name exists.
+- Body: `name` (display text, 1 to 100, required), `description` (display text, up to 500, optional). Both follow the text rules.
+- Answer: 201. 409 when a group with this owner and name exists.
 - `PUT /v1/ui-setting-groups/{groupId}` takes `name` and `description` and needs `If-Match`.
 - `DELETE /v1/ui-setting-groups/{groupId}` answers 204, or 409 while a setting is linked.
 
@@ -226,8 +268,15 @@ This service consumes no events.
 | DKNet.EfCore.Abstractions, .AuditLogs, .Extensions | NuGet | This service → package | Audited entities and audit stamping from the caller id |
 | DKNet.EfCore.DataAuthorization | NuGet | This service → package | The owner field, owner stamping and the owner filter (ADR-0005) |
 | DKNet.Svc.BlobStorage.Abstractions, .Local, .AzureStorage, .AwsS3 | NuGet | This service → package | Blob access, one provider per deployment (ADR-0003) |
-| Npgsql.EntityFrameworkCore.PostgreSQL, Microsoft.EntityFrameworkCore.SqlServer | NuGet | This service → package | The 2 database providers (ADR-0002) |
+| Npgsql.EntityFrameworkCore.PostgreSQL, Microsoft.EntityFrameworkCore.SqlServer | NuGet | This service → package | The 2 database providers (ADR-0018) |
 | Microsoft.AspNetCore.Authentication.JwtBearer | NuGet | This service → package | Bearer token validation |
+| DKNet.EfCore.DtoGenerator | NuGet | This service → package | Answer shapes generated from the entities |
+| DKNet.EfCore.Events | NuGet | This service → package | The domain event publisher on the database context; static data raises no events |
+| DKNet.EfCore.Relational.Helpers | NuGet | This service → package | Kept as the scaffold brings it |
+| DKNet.EfCore.Specifications | NuGet | This service → package | Query specifications for reads and lists |
+| DKNet.Fw.Extensions | NuGet | This service → package | Type scanning at start |
+| DKNet.SlimBus.Extensions | NuGet | This service → package | The in-memory, in-process message bus for requests inside the service |
+| DKNet.SlimBus.Generators | NuGet | This service → package | Kept as the scaffold brings it |
 | OIDC issuer, database, blob storage | Runtime services | This service → service | See Consumed APIs |
 
 - All DKNet packages of this service use one and the same DKNet release (ADR-0017).
@@ -293,10 +342,18 @@ The database's foreign key from `StoredFile.GroupId` refuses the delete too, so 
 
 ### Flow 5 — Save a UI layout
 
-1. The app backend reads the setting: `GET /v1/ui-settings?owner=<owner>&appKey=<app>&settingKey=<screen>`, with no `fromDate` or `toDate`. The activity window is off, so a setting last saved years ago is still found.
+1. The app backend reads the setting: `GET /v1/ui-settings?owner=<owner>&settingKey=<screen>`, with no `fromDate` or `toDate`. The owner names the app, and the user too when layouts are per user (ADR-0020). The activity window is off, so a setting last saved years ago is still found.
 2. No setting: it creates one with `POST /v1/ui-settings` and gets 201 with `ETag: "1"`.
 3. A setting: it replaces the value with `PUT /v1/ui-settings/{settingId}` and `If-Match` set to the version it read. It gets 200 and the new `ETag`.
 4. Two saves race on create: the second `POST` gets 409. The backend goes back to step 1.
 5. Two saves race on update: the second `PUT` gets 412 and nothing changes. The backend reads again and decides.
 
-![An app backend reads a setting by owner, app key and setting key; when none exists it creates one and gets version 1, otherwise it sends a PUT with If-Match set to the version it read and gets the next version, and a stale If-Match answers 412 without a change.](diagrams/save-ui-setting.svg)
+![An app backend reads a setting by owner and setting key; when none exists it creates one and gets version 1, otherwise it sends a PUT with If-Match set to the version it read and gets the next version, and a stale If-Match answers 412 without a change.](diagrams/save-ui-setting.svg)
+
+### Flow 6 — Erase an owner's UI settings
+
+1. The caller calls `DELETE /v1/ui-settings/all?owner=<owner>`.
+2. The service deletes every `UiSetting` of the owner, then every `SettingGroup` of the owner, in 1 transaction.
+3. It answers 204, also when the owner had nothing.
+
+Failure path: a setting is saved into a group of the owner during the erase. The foreign key from `UiSetting.GroupId` refuses the group delete (04-data). The service answers 409 and changes nothing. The caller repeats the call.

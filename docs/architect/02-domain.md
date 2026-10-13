@@ -8,7 +8,7 @@
 
 | Term | Meaning | Not to be confused with |
 |---|---|---|
-| Owner | Free text of 1 to 255 characters that the caller names on every call. Every record belongs to exactly one owner. It is often a user id or a customer id. | The caller. One caller works for many owners. |
+| Owner | Free text of 1 to 255 characters that the caller names on every call, trimmed (ADR-0018). Every record belongs to exactly one owner. It is often a user id, a customer id or an app, for example `backoffice-web` (ADR-0020). | The caller. One caller works for many owners. |
 | Caller | The backend system that sent the request, known by its token's `client_id`, `azp` or `appid` claim. Its token carries the app roles it holds (ADR-0016). | The owner, or the end user of the caller's app. |
 | App role | A permission an operator assigns to a calling app: `staticdata.read` or `staticdata.write`. It travels in the token's `roles` claim (ADR-0016). | The owner. The owner is a partition, not a permission. |
 | File | One stored document: its metadata in the database and its bytes in blob storage. The aggregate is `StoredFile`. | A file group. |
@@ -20,16 +20,17 @@
 | File group | A named set of files of one owner, for example one customer onboarding pack. | A setting group. |
 | Purpose | Free text that says what a file group is for, for example `customer-onboarding`. | The group's name. |
 | External reference | Free text that ties a file group to a record elsewhere, for example a customer id. | The owner. |
-| UI setting | One saved layout of one screen of one app, for one owner. | A named view. Version 1 has none. |
-| App key | The UI app a setting belongs to, for example `backoffice-web`. | A client id. |
+| UI setting | One saved layout of one screen, for one owner. | A named view. Version 1 has none. |
 | Setting key | The screen or component a setting belongs to, for example `customers.list.table`. | The setting's id. |
 | Setting type | Tells the UI how to read the value, for example `TableLayout`, `Filter` or `Theme`. The service does not check it against a list. | The content type of a file. |
 | Value | The setting's content: one JSON document of at most 65,536 UTF-8 bytes. The service keeps it exactly as sent and never reads inside it. | The setting's metadata. |
 | Schema version | A whole number the UI uses to upgrade an old value. Default 1. | `Version`. |
-| Setting group | A named set of UI settings of one owner and one app. | A file group. |
+| Setting group | A named set of UI settings of one owner. | A file group. |
 | Version | A whole number on every record, 1 at create and 1 higher after each update. A caller sends it back in `If-Match` to update (ADR-0010). | The schema version, or a release version of the service. |
 | Linked | A file whose `GroupId` names a file group, or a setting whose `GroupId` names a setting group. | Owned. Ownership comes from the owner, not the group. |
-| Provider | The one blob storage backend of a deployment: `Local`, `AzureStorage` or `AwsS3` (ADR-0003). | The database provider, `Postgres` or `SqlServer` (ADR-0002). |
+| Provider | The one blob storage backend of a deployment: `Local`, `AzureStorage` or `AwsS3` (ADR-0003). | The database provider, `Postgres` or `SqlServer` (ADR-0018). |
+| Trimmed | A caller's text with the white space at its start and end removed. Every caller text is trimmed except the setting value and the idempotency key (ADR-0018). | Case-folded. Case is never changed. |
+| Display text | A text shown to people: the file group name, the setting group name and the setting group description. It allows only letters a-z and A-Z, digits 0-9, spaces, `-` and `_` (ADR-0019). | A key, which keeps the "no control characters" rule. |
 
 ## Aggregates
 
@@ -38,6 +39,7 @@ All 4 aggregates are audited entities with a GUID key from `Guid.CreateVersion7(
 These invariants hold for every aggregate:
 
 - The owner is set at create and never changes.
+- Every stored caller text, except a setting value, has no white space at its start or end (ADR-0018).
 - A record is visible only to a call that names the same owner. A record of another owner does not exist for that call.
 - `Version` is 1 at create and goes up by exactly 1 with each update.
 - An update with a stale `Version` changes nothing.
@@ -46,7 +48,7 @@ These invariants hold for every aggregate:
 
 - **Root:** `StoredFile`, identified by `FileId`.
 - **Value objects inside:**
-  - `FileName` — 1 to 255 characters, the last path segment only, no control characters. Its extension is on the allow-list.
+  - `FileName` — 1 to 255 characters, trimmed, the last path segment only, no control characters. Its extension is on the allow-list.
   - `ContentType` — derived from the file name's extension with DKNet's extension map. Never taken from the caller.
   - `Checksum` — SHA-256 of the stored bytes, 64 lowercase hex characters.
   - `StorageKey` — `files/<FileId><extension>`, the extension in lowercase.
@@ -64,7 +66,7 @@ These invariants hold for every aggregate:
 ### FileGroup
 
 - **Root:** `FileGroup`, identified by `GroupId`.
-- **Fields:** `Name` (1 to 100 characters), `Purpose` (optional, up to 100 characters), `ExternalRef` (optional, up to 255 characters), `Version`.
+- **Fields:** `Name` (display text, 1 to 100 characters), `Purpose` (optional, up to 100 characters), `ExternalRef` (optional, up to 255 characters), `Version`. All 3 texts are trimmed.
 - **Invariants:**
   - A group is deleted only when no `StoredFile` is linked to it. Otherwise the delete is refused and nothing changes.
   - `Name`, `Purpose` and `ExternalRef` may change. The owner may not.
@@ -73,28 +75,27 @@ These invariants hold for every aggregate:
 ### UiSetting
 
 - **Root:** `UiSetting`, identified by `SettingId`.
-- **Fields:** `AppKey` (1 to 100 characters), `SettingKey` (1 to 200 characters), `SettingType` (1 to 50 characters), `GroupId` (optional), `Value`, `SchemaVersion`, `Version`.
+- **Fields:** `SettingKey` (1 to 200 characters, trimmed), `SettingType` (1 to 50 characters, trimmed), `GroupId` (optional), `Value`, `SchemaVersion`, `Version`.
 - **Invariants:**
-  - At most 1 setting exists per owner, app key and setting key.
-  - `AppKey` and `SettingKey` never change after create.
+  - At most 1 setting exists per owner and setting key.
+  - `SettingKey` never changes after create.
   - `Value` is valid JSON of 1 to 65,536 UTF-8 bytes. It is kept exactly as sent.
   - `SchemaVersion` is 1 or more.
-  - When `GroupId` is set, it names a `SettingGroup` of the same owner and the same app key.
+  - When `GroupId` is set, it names a `SettingGroup` of the same owner.
 - **References:** `SettingGroup` by id only.
 
 ### SettingGroup
 
 - **Root:** `SettingGroup`, identified by `GroupId`.
-- **Fields:** `AppKey` (1 to 100 characters), `Name` (1 to 100 characters), `Description` (optional, up to 500 characters), `Version`.
+- **Fields:** `Name` (display text, 1 to 100 characters), `Description` (optional display text, up to 500 characters), `Version`. Both texts are trimmed.
 - **Invariants:**
-  - At most 1 group exists per owner, app key and name.
-  - `AppKey` never changes after create.
+  - At most 1 group exists per owner and name.
   - A group is deleted only when no `UiSetting` is linked to it. Otherwise the delete is refused and nothing changes.
 - **References:** none. Settings point to the group, never the other way.
 
-These columns compare exactly, case and accents included, on both databases (ADR-0002): `OwnedBy` on all 4 tables, `UiSetting.AppKey`, `UiSetting.SettingKey`, `SettingGroup.AppKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`. `Customer-1` and `customer-1` are 2 different owners.
+These columns compare exactly, case and accents included, on both databases (ADR-0018): `OwnedBy` on all 4 tables, `UiSetting.SettingKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`. `Customer-1` and `customer-1` are 2 different owners. `customer-1 ` is trimmed to `customer-1`, so they are 1 owner on both databases.
 
-![Four owned aggregates sit inside one owner partition: StoredFile references FileGroup by id and keeps its bytes in blob storage under its storage key, and UiSetting references SettingGroup by id with the same owner and app key.](diagrams/domain-model.svg)
+![Four owned aggregates sit inside one owner partition: StoredFile references FileGroup by id and keeps its bytes in blob storage under its storage key, and UiSetting references SettingGroup by id with the same owner.](diagrams/domain-model.svg)
 
 ## Domain events
 
