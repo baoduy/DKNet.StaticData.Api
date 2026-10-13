@@ -6,8 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace DKNet.StaticData.AppServices.Features.FileGroups;
 
 /// <summary>
-///     Replaces a group's 3 fields when the caller names its current version. Checks answer in the order of rule R3:
-///     the fields (400), the version tag sent at all (428), the group (404), the version (412).
+///     Replaces a group's 3 fields, trimmed, when the caller names its current version. Checks answer in the order of
+///     rule R3: the fields (400, by <see cref="FileGroupFieldsValidator" /> before this handler runs), the version tag
+///     sent at all (428), the group (404), the version (412).
 /// </summary>
 public sealed class UpdateFileGroupHandler(IRepositorySpec repository, ICallerAccessor caller)
 {
@@ -25,11 +26,6 @@ public sealed class UpdateFileGroupHandler(IRepositorySpec repository, ICallerAc
         int? ifMatch,
         CancellationToken cancellationToken = default)
     {
-        if (fields.Refusal() is { } refusal)
-        {
-            return Result.Fail<FileGroupDto>(new FileError(FileErrorKind.Refused, refusal));
-        }
-
         if (ifMatch is null)
         {
             return Result.Fail<FileGroupDto>(new FileError(FileErrorKind.VersionRequired,
@@ -47,7 +43,9 @@ public sealed class UpdateFileGroupHandler(IRepositorySpec repository, ICallerAc
             return Result.Fail<FileGroupDto>(new FileError(FileErrorKind.VersionStale, FileGroupAnswers.VersionStale));
         }
 
-        group.Update(fields.Name!, fields.Purpose, fields.ExternalRef, caller.CallerId ?? string.Empty);
+        group.Update(
+            TextRules.Trim(fields.Name)!, TextRules.Trim(fields.Purpose), TextRules.Trim(fields.ExternalRef),
+            caller.CallerId ?? string.Empty);
         try
         {
             await repository.SaveChangesAsync(cancellationToken);

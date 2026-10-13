@@ -12,7 +12,7 @@ public static class TextRules
     #region Methods
 
     /// <summary>The text with the white space at both ends removed; <see langword="null" /> stays <see langword="null" />.</summary>
-    public static string? Trim(string? text) => text;
+    public static string? Trim(string? text) => text?.Trim();
 
     /// <summary>
     ///     A caller text: no control character as sent, at most <paramref name="maxLength" /> characters after trimming,
@@ -22,7 +22,10 @@ public static class TextRules
         this IRuleBuilder<T, string?> rule,
         int maxLength,
         bool required) =>
-        rule.Must(_ => true);
+        rule.Must(text => text is null || !text.Any(char.IsControl))
+            .WithMessage("'{PropertyName}' must have no control character.")
+            .Must(text => text is null ? !required : text.Trim().Length is var length && length > 0 && length <= maxLength)
+            .WithMessage($"'{{PropertyName}}' must be 1 to {maxLength} characters, not counting the spaces at both ends.");
 
     /// <summary>
     ///     A display text: a caller text (<see cref="CallerText{T}" />) that, after trimming, holds only letters a-z and
@@ -32,7 +35,9 @@ public static class TextRules
         this IRuleBuilder<T, string?> rule,
         int maxLength,
         bool required) =>
-        rule.Must(_ => true);
+        rule.CallerText(maxLength, required)
+            .Must(text => text is null || text.Trim().All(c => char.IsAsciiLetterOrDigit(c) || c is ' ' or '-' or '_'))
+            .WithMessage("'{PropertyName}' may hold only letters a-z and A-Z, digits 0-9, spaces, '-' and '_'.");
 
     #endregion
 }

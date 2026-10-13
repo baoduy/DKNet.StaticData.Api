@@ -8,8 +8,9 @@ namespace DKNet.StaticData.Api.ApiEndpoints.FileGroups;
 
 /// <summary>
 /// The 5 file group routes under <c>/v1/file-groups</c> (spec DRK-2235 §3a). Checks answer in order: token and caller
-/// id (401) and app role (403) in the authorization middleware, then the owner (400), then on create the idempotency
-/// key, then the body; an update then needs its version tag (rule R3). Every route keeps the default request limits.
+/// id (401) and app role (403) in the authorization middleware, then the owner (400), then the body (400, spec DRK-2245
+/// §6 R4), then on create the idempotency key; an update then needs its version tag (rule R3). Every route keeps the
+/// default request limits.
 /// </summary>
 internal sealed class FileGroupV1Endpoint : IEndpointConfig
 {
@@ -28,7 +29,6 @@ internal sealed class FileGroupV1Endpoint : IEndpointConfig
         // The same group filters as the file routes, in the same order (FileV1Endpoint).
         group.AddEndpointFilter<CallerLogScopeFilter>();
         group.AddEndpointFilter<DependencyFailureFilter>();
-        group.AddEndpointFilter<OwnerFilter>();
 
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(AuthConfig.WriteRole)

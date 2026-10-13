@@ -11,7 +11,7 @@ namespace DKNet.StaticData.AppServices.Features.FileGroups;
 
 /// <summary>
 ///     The query of the group list (spec DRK-2235 §3a): the page, the optional date range and the exact purpose and
-///     external reference filters.
+///     external reference filters, each trimmed before it filters (spec DRK-2245 §3).
 /// </summary>
 public sealed record FileGroupListQuery
 {
@@ -30,6 +30,20 @@ public sealed record FileGroupListQuery
     public string? Purpose { get; init; }
 
     public string? ExternalRef { get; init; }
+
+    #endregion
+}
+
+/// <summary>The list filters are optional caller texts of the lengths their fields hold (spec DRK-2245 §3, Q2).</summary>
+internal sealed class FileGroupListQueryValidator : AbstractValidator<FileGroupListQuery>
+{
+    #region Constructors
+
+    public FileGroupListQueryValidator()
+    {
+        RuleFor(q => q.Purpose).CallerText(maxLength: 100, required: false);
+        RuleFor(q => q.ExternalRef).CallerText(maxLength: 255, required: false);
+    }
 
     #endregion
 }
@@ -66,7 +80,8 @@ public sealed class ListFileGroupsHandler(IRepositorySpec repository, IOptions<L
     {
         public FileGroupList(FileGroupListQuery query)
         {
-            var (from, to, purpose, externalRef) = (query.FromDate, query.ToDate, query.Purpose, query.ExternalRef);
+            var (from, to, purpose, externalRef) =
+                (query.FromDate, query.ToDate, TextRules.Trim(query.Purpose), TextRules.Trim(query.ExternalRef));
             WithFilter(g =>
                 (purpose == null || g.Purpose == purpose)
                 && (externalRef == null || g.ExternalRef == externalRef)

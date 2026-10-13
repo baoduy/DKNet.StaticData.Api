@@ -2,40 +2,24 @@ namespace DKNet.StaticData.AppServices.Features.FileGroups;
 
 /// <summary>
 ///     The body of a group create or update (spec DRK-2235 §3a). An update replaces all 3 fields, so a field left out
-///     or sent as <see langword="null" /> clears it. Every value is kept exactly as sent.
+///     or sent as <see langword="null" /> clears it. Every value is stored trimmed (spec DRK-2245 §3).
 /// </summary>
-public sealed record FileGroupFields(string? Name, string? Purpose = null, string? ExternalRef = null)
+public sealed record FileGroupFields(string? Name, string? Purpose = null, string? ExternalRef = null);
+
+/// <summary>
+///     Rules R1 and R2 under the text rules of spec DRK-2245 §3: the name is a required display text of 1 to 100
+///     characters, the purpose an optional caller text of up to 100 and the external reference one of up to 255.
+/// </summary>
+internal sealed class FileGroupFieldsValidator : AbstractValidator<FileGroupFields>
 {
-    #region Fields
+    #region Constructors
 
-    private const int MaxNameLength = 100;
-    private const int MaxPurposeLength = 100;
-    private const int MaxExternalRefLength = 255;
-
-    #endregion
-
-    #region Methods
-
-    /// <summary>Rules R1 and R2: why the fields are refused, or <see langword="null" /> when they may be saved.</summary>
-    public string? Refusal()
+    public FileGroupFieldsValidator()
     {
-        if (Name is null || !IsText(Name, MaxNameLength))
-        {
-            return "The name must be 1 to 100 characters, not only white space, with no control character.";
-        }
-
-        if (Purpose is not null && !IsText(Purpose, MaxPurposeLength))
-        {
-            return "The purpose must be 1 to 100 characters, not only white space, with no control character.";
-        }
-
-        return ExternalRef is not null && !IsText(ExternalRef, MaxExternalRefLength)
-            ? "The external reference must be 1 to 255 characters, not only white space, with no control character."
-            : null;
+        RuleFor(f => f.Name).DisplayText(maxLength: 100, required: true);
+        RuleFor(f => f.Purpose).CallerText(maxLength: 100, required: false);
+        RuleFor(f => f.ExternalRef).CallerText(maxLength: 255, required: false);
     }
-
-    private static bool IsText(string value, int maxLength) =>
-        value.Length <= maxLength && !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
 
     #endregion
 }
