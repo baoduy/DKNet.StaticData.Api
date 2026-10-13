@@ -35,13 +35,18 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
     /// <summary>
     /// On SQL Server, every owner column, the file group's purpose and external reference, the setting key and the
     /// setting group name compare exactly, as they do on Postgres by default (design <c>04-data.md</c>, ADR-0002): the
-    /// binary collation <see cref="ExactCollation"/>. Runs after DKNet's auto-config has applied every
-    /// entity configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
+    /// binary collation <see cref="ExactCollation"/>. On Postgres, the setting value is <c>text</c>. Runs after DKNet's
+    /// auto-config has applied every entity configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        if (!this.IsSqlServer()) return;
+        if (!this.IsSqlServer())
+        {
+            // Postgres would store a bounded text as varchar(n); the value is text, as nvarchar(max) is on SQL Server.
+            modelBuilder.Entity<UiSetting>().Property(s => s.Value).HasColumnType("text");
+            return;
+        }
 
         foreach (var entity in modelBuilder.Model.GetEntityTypes().Where(e => typeof(IOwnedBy).IsAssignableFrom(e.ClrType)))
         {

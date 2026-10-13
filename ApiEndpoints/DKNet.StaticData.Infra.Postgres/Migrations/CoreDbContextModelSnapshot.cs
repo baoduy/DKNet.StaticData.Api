@@ -233,6 +233,7 @@ namespace DKNet.StaticData.Infra.Postgres.Migrations
 
                     b.Property<string>("Value")
                         .IsRequired()
+                        .HasMaxLength(65536)
                         .HasColumnType("text");
 
                     b.Property<int>("Version")

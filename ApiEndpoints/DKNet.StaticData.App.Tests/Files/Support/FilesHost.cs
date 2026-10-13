@@ -1,4 +1,6 @@
 using DKNet.StaticData.App.TestSupport;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace DKNet.StaticData.App.Tests.Files.Support;
 
@@ -68,6 +70,11 @@ public sealed class FilesHost : IAsyncLifetime
         {
             Directory.Delete(folder, recursive: true);
         }
+
+        // Each class's hosts use databases no later class uses: close their idle pooled connections now, so the shared
+        // servers do not run out of connections over the whole run (Postgres 53300 "too many clients already").
+        NpgsqlConnection.ClearAllPools();
+        SqlConnection.ClearAllPools();
     }
 
     private async Task<FilesApi> StartAsync(
