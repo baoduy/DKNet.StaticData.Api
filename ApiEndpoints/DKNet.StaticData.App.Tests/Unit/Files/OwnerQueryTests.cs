@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Http;
 namespace DKNet.StaticData.App.Tests.Unit.Files;
 
 /// <summary>
-/// Brief DRK-2209 §6a D3: the owner is exactly one value of 1 to 255 characters, not only white space, with no
-/// control character, kept exactly as sent.
+/// Brief DRK-2209 §6a D3 and brief DRK-2247 §6a D1-D3: the owner is exactly one value with no control character as
+/// sent, anywhere, the ends included; it is trimmed, and the trimmed owner is 1 to 255 characters.
 /// </summary>
 public class OwnerQueryTests
 {
@@ -18,7 +18,11 @@ public class OwnerQueryTests
         { $"?owner={new string('o', 255)}", new string('o', 255) },
         { $"?owner={new string('o', 256)}", null },
         { "?owner=customer%091", null },
-        { "?owner=%20Customer-1%20", " Customer-1 " },
+        { "?owner=%20Customer-1%20", "Customer-1" },
+        { "?owner=customer-1%20", "customer-1" },
+        { $"?owner={new string('o', 255)}%20%20", new string('o', 255) },
+        { "?owner=customer-1%09", null },
+        { "?owner=%09customer-1", null },
         { "?owner=customer-1&owner=customer-2", null }
     };
 

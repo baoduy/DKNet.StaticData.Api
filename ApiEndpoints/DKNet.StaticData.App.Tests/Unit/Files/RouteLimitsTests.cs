@@ -11,8 +11,9 @@ using Microsoft.Extensions.Options;
 namespace DKNet.StaticData.App.Tests.Unit.Files;
 
 /// <summary>
-/// Spec DRK-2206 §5 "Limits and settings" and spec DRK-2235 §5 "Answers and limits": each file route's, group route's and
-/// the link route's request body limit and timeout, as the started service
+/// Spec DRK-2206 §5 "Limits and settings", spec DRK-2235 §5 "Answers and limits" and spec DRK-2245 §5 "Answers, limits
+/// and logs": each file route's, group route's, the link route's and each UI settings route's request body limit and
+/// timeout, as the started service
 /// applies them — the route's own limit when it sets one, else the service-wide Kestrel body limit and default request
 /// timeout. Each route must exist first, so a route that is missing never passes on the service-wide defaults.
 /// </summary>
@@ -30,7 +31,19 @@ public sealed class RouteLimitsTests(FilesHost hosts) : IClassFixture<FilesHost>
         { "group read route", 1_048_576, 30 },
         { "group update route", 1_048_576, 30 },
         { "group delete route", 1_048_576, 30 },
-        { "link route", 1_048_576, 30 }
+        { "link route", 1_048_576, 30 },
+        // spec DRK-2245 §5: the UI settings routes keep the default request limits
+        { "setting create route", 1_048_576, 30 },
+        { "setting list route", 1_048_576, 30 },
+        { "setting read route", 1_048_576, 30 },
+        { "setting update route", 1_048_576, 30 },
+        { "setting delete route", 1_048_576, 30 },
+        { "erase route", 1_048_576, 30 },
+        { "setting group create route", 1_048_576, 30 },
+        { "setting group list route", 1_048_576, 30 },
+        { "setting group read route", 1_048_576, 30 },
+        { "setting group update route", 1_048_576, 30 },
+        { "setting group delete route", 1_048_576, 30 }
     };
 
     /// <summary>Scenario Outline: Each file route has its own request limits.</summary>
@@ -52,6 +65,17 @@ public sealed class RouteLimitsTests(FilesHost hosts) : IClassFixture<FilesHost>
             "group update route" => ("PUT", @"file-groups/\{groupId[^}]*\}/?$"),
             "group delete route" => ("DELETE", @"file-groups/\{groupId[^}]*\}/?$"),
             "link route" => ("PUT", @"files/\{fileId[^}]*\}/group/?$"),
+            "setting create route" => ("POST", @"ui-settings/?$"),
+            "setting list route" => ("GET", @"ui-settings/?$"),
+            "setting read route" => ("GET", @"ui-settings/\{settingId[^}]*\}/?$"),
+            "setting update route" => ("PUT", @"ui-settings/\{settingId[^}]*\}/?$"),
+            "setting delete route" => ("DELETE", @"ui-settings/\{settingId[^}]*\}/?$"),
+            "erase route" => ("DELETE", @"ui-settings/all/?$"),
+            "setting group create route" => ("POST", @"ui-setting-groups/?$"),
+            "setting group list route" => ("GET", @"ui-setting-groups/?$"),
+            "setting group read route" => ("GET", @"ui-setting-groups/\{groupId[^}]*\}/?$"),
+            "setting group update route" => ("PUT", @"ui-setting-groups/\{groupId[^}]*\}/?$"),
+            "setting group delete route" => ("DELETE", @"ui-setting-groups/\{groupId[^}]*\}/?$"),
             _ => throw new ArgumentOutOfRangeException(nameof(route), route, null)
         };
 

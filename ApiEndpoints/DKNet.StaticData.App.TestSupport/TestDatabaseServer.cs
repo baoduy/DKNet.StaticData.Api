@@ -141,11 +141,13 @@ public sealed class TestDatabaseServer : IAsyncDisposable
     /// <summary>
     /// Deletes every row of every table outside the <c>migrate</c> schema, where the service and the idempotency store
     /// keep their migration history, so a host on this database starts its next test from empty tables without
-    /// migrating again. Stored files go first: their group link is a foreign key to the file groups.
+    /// migrating again. Stored files and UI settings go first: their group link is a foreign key to the file groups and
+    /// the setting groups.
     /// </summary>
     public async Task DeleteAllRowsAsync(string connectionString)
     {
-        foreach (var table in (await ListTablesAsync(connectionString)).OrderBy(t => t == "files.StoredFiles" ? 0 : 1))
+        foreach (var table in (await ListTablesAsync(connectionString))
+                     .OrderBy(t => t is "files.StoredFiles" or "settings.UiSettings" ? 0 : 1))
         {
             var (schema, name) = (table[..table.IndexOf('.', StringComparison.Ordinal)], table[(table.IndexOf('.', StringComparison.Ordinal) + 1)..]);
             if (schema == "migrate")

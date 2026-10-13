@@ -4,7 +4,8 @@ namespace DKNet.StaticData.App.Tests.Files.Support;
 
 /// <summary>
 /// The callers spec DRK-2206 §5 names, as signed bearer tokens: "onboarding-svc" holds both app roles, "report-svc"
-/// only <see cref="Read"/>, "ingest-svc" only <see cref="Write"/>. Each caller id travels in the token's
+/// only <see cref="Read"/>, "ingest-svc" only <see cref="Write"/>; spec DRK-2245 §5 adds "layout-svc", which holds both
+/// app roles. Each caller id travels in the token's
 /// <c>client_id</c> claim unless a scenario names another claim.
 /// </summary>
 internal static class Callers
@@ -13,6 +14,8 @@ internal static class Callers
     public const string Write = "staticdata.write";
 
     public static string OnboardingSvc => Holding("onboarding-svc", Read, Write);
+
+    public static string LayoutSvc => Holding("layout-svc", Read, Write);
 
     public static string ReportSvc => Holding("report-svc", Read);
 

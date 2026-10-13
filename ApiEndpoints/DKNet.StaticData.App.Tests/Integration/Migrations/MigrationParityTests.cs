@@ -3,7 +3,8 @@ using DKNet.StaticData.App.TestSupport;
 namespace DKNet.StaticData.App.Tests.Integration.Migrations;
 
 /// <summary>
-/// DRK-2198 §6 R2 and spec DRK-2206 "Must stay true": both databases reach the same tables, primary keys and indexes
+/// DRK-2198 §6 R2, spec DRK-2206 "Must stay true" and spec DRK-2245 §5 "Both databases reach the same tables, keys and
+/// indexes": both databases reach the same tables, primary keys and indexes
 /// (name and uniqueness) after their own migrations, each brought up to date by the service's start-up migration on a
 /// real, empty database.
 /// </summary>
@@ -30,6 +31,14 @@ public class MigrationParityTests
 
         postgres.Tables.ShouldNotBeEmpty("the Postgres migration created no table, not even its history");
         postgres.Indexes.ShouldContain("files.StoredFiles.PK_StoredFiles primary key");
+        // spec DRK-2245 §5: the setting and setting group tables, their unique keys and the group link index
+        postgres.Tables.ShouldContain("settings.UiSettings");
+        postgres.Tables.ShouldContain("settings.SettingGroups");
+        postgres.Indexes.ShouldContain("settings.UiSettings.PK_UiSettings primary key");
+        postgres.Indexes.ShouldContain("settings.UiSettings.IX_UiSettings_OwnedBy_SettingKey unique");
+        postgres.Indexes.ShouldContain("settings.UiSettings.IX_UiSettings_GroupId");
+        postgres.Indexes.ShouldContain("settings.SettingGroups.PK_SettingGroups primary key");
+        postgres.Indexes.ShouldContain("settings.SettingGroups.IX_SettingGroups_OwnedBy_Name unique");
         sqlServer.Tables.ShouldBe(postgres.Tables);
         sqlServer.Indexes.ShouldBe(postgres.Indexes);
     }

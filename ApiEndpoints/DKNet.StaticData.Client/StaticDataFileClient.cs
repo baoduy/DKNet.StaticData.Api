@@ -184,6 +184,78 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
     }
 
+    public Task<StaticDataUiSetting> CreateSettingAsync(
+        string owner,
+        string settingKey,
+        string settingType,
+        string value,
+        Guid? groupId = null,
+        int? schemaVersion = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataUiSettingPage> ListSettingsAsync(
+        string owner,
+        int pageNumber,
+        int pageSize,
+        DateTimeOffset? fromDate = null,
+        DateTimeOffset? toDate = null,
+        string? settingKey = null,
+        Guid? groupId = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataUiSetting> GetSettingAsync(string owner, Guid settingId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataUiSetting> UpdateSettingAsync(
+        string owner,
+        Guid settingId,
+        int version,
+        string settingType,
+        string value,
+        Guid? groupId = null,
+        int? schemaVersion = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task DeleteSettingAsync(string owner, Guid settingId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task EraseSettingsAsync(string owner, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataSettingGroup> CreateSettingGroupAsync(
+        string owner,
+        string name,
+        string? description = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataSettingGroupPage> ListSettingGroupsAsync(
+        string owner,
+        int pageNumber,
+        int pageSize,
+        DateTimeOffset? fromDate = null,
+        DateTimeOffset? toDate = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataSettingGroup> GetSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task<StaticDataSettingGroup> UpdateSettingGroupAsync(
+        string owner,
+        Guid groupId,
+        int version,
+        string name,
+        string? description = null,
+        CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
+    public Task DeleteSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
+        throw new NotImplementedException();
+
     /// <summary>The page, then each date that is given, both written invariant in round-trip form.</summary>
     private static List<(string Key, string Value)> PageQuery(
         int pageNumber,
