@@ -1,9 +1,7 @@
-using System.Globalization;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using DKNet.StaticData.Client.Contracts;
+using static DKNet.StaticData.Client.StaticDataHttp;
 
 namespace DKNet.StaticData.Client;
 
@@ -17,11 +15,12 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
 
     private const string GroupRoute = "/v1/file-groups";
 
+    private const string SettingRoute = "/v1/ui-settings";
+
+    private const string SettingGroupRoute = "/v1/ui-setting-groups";
+
     /// <summary>DKNet.AspCore.Idempotency's default header name, which the service keeps.</summary>
     private const string IdempotencyKeyHeader = "X-Idempotency-Key";
-
-    /// <summary>Case-insensitive, so a field the service renames only in casing still reads.</summary>
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
 
@@ -51,7 +50,7 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
 
         using var request = new HttpRequestMessage(HttpMethod.Post, WithQuery(Route, owner)) { Content = form };
         request.Headers.Add(IdempotencyKeyHeader, idempotencyKey);
-        return await ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFilePage> ListAsync(
@@ -70,20 +69,21 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery(Route, owner, parameters));
-        return await ReadAsync<StaticDataFilePage>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFilePage>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFile> GetAsync(string owner, Guid fileId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{Route}/{fileId}", owner));
-        return await ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFileContent> DownloadAsync(string owner, Guid fileId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{Route}/{fileId}/content", owner));
         // Headers only, so the bytes stream to the caller instead of being buffered here.
-        var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseHeadersRead, ct)
+            .ConfigureAwait(false);
         var headers = response.Content.Headers;
         // filename* holds the exact UTF-8 name; filename is its quoted ASCII fallback.
         var fileName = headers.ContentDisposition?.FileNameStar ?? headers.ContentDisposition?.FileName?.Trim('"');
@@ -95,7 +95,8 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
     public async Task DeleteAsync(string owner, Guid fileId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{Route}/{fileId}", owner));
-        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
+        using var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseContentRead, ct)
+            .ConfigureAwait(false);
     }
 
     public async Task<StaticDataFile> LinkAsync(
@@ -111,7 +112,7 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
             Content = JsonContent.Create(new LinkBody(groupId), options: JsonOptions)
         };
         AddVersion(request, version);
-        return await ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFile>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFileGroup> CreateGroupAsync(
@@ -127,7 +128,7 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
             Content = JsonContent.Create(new GroupBody(name, purpose, externalRef), options: JsonOptions)
         };
         request.Headers.Add(IdempotencyKeyHeader, idempotencyKey);
-        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFileGroupPage> ListGroupsAsync(
@@ -152,13 +153,13 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery(GroupRoute, owner, parameters));
-        return await ReadAsync<StaticDataFileGroupPage>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFileGroupPage>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFileGroup> GetGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{GroupRoute}/{groupId}", owner));
-        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
     }
 
     public async Task<StaticDataFileGroup> UpdateGroupAsync(
@@ -175,26 +176,33 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
             Content = JsonContent.Create(new GroupBody(name, purpose, externalRef), options: JsonOptions)
         };
         AddVersion(request, version);
-        return await ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
+        return await _httpClient.ReadAsync<StaticDataFileGroup>(request, ct).ConfigureAwait(false);
     }
 
     public async Task DeleteGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{GroupRoute}/{groupId}", owner));
-        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
+        using var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseContentRead, ct)
+            .ConfigureAwait(false);
     }
 
-    public Task<StaticDataUiSetting> CreateSettingAsync(
+    public async Task<StaticDataUiSetting> CreateSettingAsync(
         string owner,
         string settingKey,
         string settingType,
         string value,
         Guid? groupId = null,
         int? schemaVersion = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, WithQuery(SettingRoute, owner))
+        {
+            Content = JsonBody(new SettingBody(settingKey, settingType, groupId, value, schemaVersion))
+        };
+        return await _httpClient.ReadAsync<StaticDataUiSetting>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataUiSettingPage> ListSettingsAsync(
+    public async Task<StaticDataUiSettingPage> ListSettingsAsync(
         string owner,
         int pageNumber,
         int pageSize,
@@ -202,13 +210,30 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         DateTimeOffset? toDate = null,
         string? settingKey = null,
         Guid? groupId = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        var parameters = PageQuery(pageNumber, pageSize, fromDate, toDate);
+        if (settingKey is not null)
+        {
+            parameters.Add(("settingKey", settingKey));
+        }
 
-    public Task<StaticDataUiSetting> GetSettingAsync(string owner, Guid settingId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        if (groupId is { } group)
+        {
+            parameters.Add(("groupId", group.ToString()));
+        }
 
-    public Task<StaticDataUiSetting> UpdateSettingAsync(
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery(SettingRoute, owner, parameters));
+        return await _httpClient.ReadAsync<StaticDataUiSettingPage>(request, ct).ConfigureAwait(false);
+    }
+
+    public async Task<StaticDataUiSetting> GetSettingAsync(string owner, Guid settingId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{SettingRoute}/{settingId}", owner));
+        return await _httpClient.ReadAsync<StaticDataUiSetting>(request, ct).ConfigureAwait(false);
+    }
+
+    public async Task<StaticDataUiSetting> UpdateSettingAsync(
         string owner,
         Guid settingId,
         int version,
@@ -216,121 +241,84 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         string value,
         Guid? groupId = null,
         int? schemaVersion = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        // The service ignores a setting key on update, so none is sent.
+        using var request = new HttpRequestMessage(HttpMethod.Put, WithQuery($"{SettingRoute}/{settingId}", owner))
+        {
+            Content = JsonBody(new SettingBody(null, settingType, groupId, value, schemaVersion))
+        };
+        AddVersion(request, version);
+        return await _httpClient.ReadAsync<StaticDataUiSetting>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task DeleteSettingAsync(string owner, Guid settingId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+    public async Task DeleteSettingAsync(string owner, Guid settingId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{SettingRoute}/{settingId}", owner));
+        using var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseContentRead, ct)
+            .ConfigureAwait(false);
+    }
 
-    public Task EraseSettingsAsync(string owner, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+    public async Task EraseSettingsAsync(string owner, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{SettingRoute}/all", owner));
+        using var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseContentRead, ct)
+            .ConfigureAwait(false);
+    }
 
-    public Task<StaticDataSettingGroup> CreateSettingGroupAsync(
+    public async Task<StaticDataSettingGroup> CreateSettingGroupAsync(
         string owner,
         string name,
         string? description = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, WithQuery(SettingGroupRoute, owner))
+        {
+            Content = JsonContent.Create(new SettingGroupBody(name, description), options: JsonOptions)
+        };
+        return await _httpClient.ReadAsync<StaticDataSettingGroup>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataSettingGroupPage> ListSettingGroupsAsync(
+    public async Task<StaticDataSettingGroupPage> ListSettingGroupsAsync(
         string owner,
         int pageNumber,
         int pageSize,
         DateTimeOffset? fromDate = null,
         DateTimeOffset? toDate = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, WithQuery(SettingGroupRoute, owner, PageQuery(pageNumber, pageSize, fromDate, toDate)));
+        return await _httpClient.ReadAsync<StaticDataSettingGroupPage>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataSettingGroup> GetSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
+    public async Task<StaticDataSettingGroup> GetSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, WithQuery($"{SettingGroupRoute}/{groupId}", owner));
+        return await _httpClient.ReadAsync<StaticDataSettingGroup>(request, ct).ConfigureAwait(false);
+    }
 
-    public Task<StaticDataSettingGroup> UpdateSettingGroupAsync(
+    public async Task<StaticDataSettingGroup> UpdateSettingGroupAsync(
         string owner,
         Guid groupId,
         int version,
         string name,
         string? description = null,
-        CancellationToken ct = default) =>
-        throw new NotImplementedException();
-
-    public Task DeleteSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default) =>
-        throw new NotImplementedException();
-
-    /// <summary>The page, then each date that is given, both written invariant in round-trip form.</summary>
-    private static List<(string Key, string Value)> PageQuery(
-        int pageNumber,
-        int pageSize,
-        DateTimeOffset? fromDate,
-        DateTimeOffset? toDate)
+        CancellationToken ct = default)
     {
-        var parameters = new List<(string Key, string Value)>
+        using var request = new HttpRequestMessage(HttpMethod.Put, WithQuery($"{SettingGroupRoute}/{groupId}", owner))
         {
-            ("pageNumber", pageNumber.ToString(CultureInfo.InvariantCulture)),
-            ("pageSize", pageSize.ToString(CultureInfo.InvariantCulture))
+            Content = JsonContent.Create(new SettingGroupBody(name, description), options: JsonOptions)
         };
-        if (fromDate is { } from)
-        {
-            parameters.Add(("fromDate", from.ToString("O", CultureInfo.InvariantCulture)));
-        }
-
-        if (toDate is { } to)
-        {
-            parameters.Add(("toDate", to.ToString("O", CultureInfo.InvariantCulture)));
-        }
-
-        return parameters;
+        AddVersion(request, version);
+        return await _httpClient.ReadAsync<StaticDataSettingGroup>(request, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Sends <paramref name="version"/> as the one strong tag <c>If-Match: "&lt;version&gt;"</c> the service matches.</summary>
-    private static void AddVersion(HttpRequestMessage request, int version) =>
-        request.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{version.ToString(CultureInfo.InvariantCulture)}\""));
-
-    /// <summary><paramref name="path"/> with the owner first, then <paramref name="more"/>, every value URL-encoded.</summary>
-    private static string WithQuery(string path, string owner, params IReadOnlyList<(string Key, string Value)> more) =>
-        $"{path}?owner={Uri.EscapeDataString(owner)}" +
-        string.Concat(more.Select(p => $"&{p.Key}={Uri.EscapeDataString(p.Value)}"));
-
-    private async Task<T> ReadAsync<T>(HttpRequestMessage request, CancellationToken ct)
-        where T : new()
+    public async Task DeleteSettingGroupAsync(string owner, Guid groupId, CancellationToken ct = default)
     {
-        using var response = await SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
-        return await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct).ConfigureAwait(false) ?? new T();
-    }
-
-    /// <summary>Sends <paramref name="request"/>; a non-success answer throws <see cref="StaticDataApiException"/>.</summary>
-    private async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        HttpCompletionOption completion,
-        CancellationToken ct)
-    {
-        var response = await _httpClient.SendAsync(request, completion, ct).ConfigureAwait(false);
-        return response.IsSuccessStatusCode ? response : throw await ErrorOfAsync(response, ct).ConfigureAwait(false);
-    }
-
-    /// <summary>The typed error for a non-success <paramref name="response"/>, which it disposes.</summary>
-    private static async Task<StaticDataApiException> ErrorOfAsync(HttpResponseMessage response, CancellationToken ct)
-    {
-        using (response)
-        {
-            return new StaticDataApiException(
-                response.StatusCode,
-                await ReadProblemDetailsAsync(response.Content, ct).ConfigureAwait(false),
-                $"The StaticData service answered {(int)response.StatusCode} {response.ReasonPhrase}.");
-        }
-    }
-
-    /// <summary>The body's problem details, or <see langword="null"/> when it is empty, not JSON or not problem details.</summary>
-    private static async Task<StaticDataProblemDetails?> ReadProblemDetailsAsync(HttpContent content, CancellationToken ct)
-    {
-        try
-        {
-            var details = await content.ReadFromJsonAsync<StaticDataProblemDetails>(JsonOptions, ct).ConfigureAwait(false);
-            return details is { Type: not null } or { Title: not null } or { Status: not null } ? details : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
+        using var request = new HttpRequestMessage(HttpMethod.Delete, WithQuery($"{SettingGroupRoute}/{groupId}", owner));
+        using var response = await _httpClient.SendOrThrowAsync(request, HttpCompletionOption.ResponseContentRead, ct)
+            .ConfigureAwait(false);
     }
 
     /// <summary>The group create and update body; an empty purpose or external reference is left out.</summary>
@@ -341,4 +329,20 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
 
     /// <summary>The link body; <see cref="GroupId"/> is always written, <see langword="null"/> included.</summary>
     private sealed record LinkBody(Guid? GroupId);
+
+    /// <summary>
+    /// The setting create and update body: <see cref="Value"/> goes out as its own JSON text, and an empty setting key
+    /// (on update), group or schema version is left out, so the service takes no group and schema version 1.
+    /// </summary>
+    private sealed record SettingBody(
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SettingKey,
+        string SettingType,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? GroupId,
+        [property: JsonConverter(typeof(RawJsonConverter))] string Value,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? SchemaVersion);
+
+    /// <summary>The setting group create and update body; an empty description is left out.</summary>
+    private sealed record SettingGroupBody(
+        string Name,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Description);
 }

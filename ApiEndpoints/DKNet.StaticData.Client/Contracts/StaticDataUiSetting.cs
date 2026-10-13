@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DKNet.StaticData.Client.Contracts;
 
 /// <summary>A UI setting, as the setting create, read, update and list answers carry it. A missing answer field reads as empty.</summary>
@@ -16,6 +18,7 @@ public sealed record StaticDataUiSetting
     public Guid? GroupId { get; init; }
 
     /// <summary>The value as raw JSON text, exactly as the service answered it.</summary>
+    [JsonConverter(typeof(RawJsonConverter))]
     public string? Value { get; init; }
 
     public int SchemaVersion { get; init; }

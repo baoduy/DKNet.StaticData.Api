@@ -92,7 +92,8 @@ public interface IStaticDataFileClient
 
     /// <summary>
     /// <c>POST /v1/ui-settings</c>: creates the setting <paramref name="settingKey"/> for <paramref name="owner"/>.
-    /// <paramref name="value"/> is raw JSON text, sent exactly as given; a <see langword="null"/>
+    /// <paramref name="value"/> is raw JSON text, sent exactly as given; text that is not one JSON value throws
+    /// <see cref="System.Text.Json.JsonException"/> before any request goes out. A <see langword="null"/>
     /// <paramref name="schemaVersion"/> is left out, so the service takes 1.
     /// </summary>
     Task<StaticDataUiSetting> CreateSettingAsync(
@@ -123,7 +124,9 @@ public interface IStaticDataFileClient
 
     /// <summary>
     /// <c>PUT /v1/ui-settings/{settingId}</c>: replaces the setting's type, group, value and schema version, sending
-    /// <paramref name="version"/> as <c>If-Match</c>. Returns the setting with its new version.
+    /// <paramref name="version"/> as <c>If-Match</c>. Returns the setting with its new version. <paramref name="value"/>
+    /// and <paramref name="schemaVersion"/> go out as on <see cref="CreateSettingAsync"/>; a <see langword="null"/>
+    /// <paramref name="groupId"/> unlinks the setting.
     /// </summary>
     Task<StaticDataUiSetting> UpdateSettingAsync(
         string owner,
