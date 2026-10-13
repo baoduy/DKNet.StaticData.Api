@@ -1,0 +1,23 @@
+# ADR-0018: One relational database, Postgres or SQL Server, with trimmed text compared exactly
+
+- **Status:** Accepted
+- **Context:**
+  - ADR-0002 keeps all records in one database per deployment, Postgres or SQL Server, and compares owners and keys exactly on both. It promises the same behaviour on both databases.
+  - SQL Server pads strings before it compares them, so `abc` and `abc ` are equal in most comparisons. `LIKE` is the only exception. Postgres keeps trailing spaces in `varchar` and `text`, so there they are 2 values.
+  - So owner `customer-1 ` and owner `customer-1` were 1 owner on SQL Server and 2 owners on Postgres. The same held for file group purposes and external references.
+  - The requester decided on 2026-10-13 (DRK-2190, round 1 answer 1 and round 2 answer 1) that the service trims every text a caller sends.
+  - Design revision 5 removes the app key (ADR-0020). So the exact-compare column list of ADR-0002 changes too.
+- **Decision:**
+  - Keep all records in one relational database per deployment, picked by `Database:Provider`: `Postgres` (default) or `SqlServer`. Each database has its own migrations with the same tables, keys and indexes.
+  - The service removes the white space at the start and the end of every text a caller sends, before it checks a length, stores the text or compares it. 03-integration, Text rules, lists the texts.
+  - 2 texts are never trimmed: the setting value, kept byte for byte, and the idempotency key, whose strict format still refuses a space.
+  - The control character check runs on the text as sent, before the trim. A trailing tab still answers 400.
+  - Case and accents still count. These columns compare exactly on both databases: `OwnedBy` on all 4 tables, `UiSetting.SettingKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`. On SQL Server they use the binary collation `Latin1_General_100_BIN2`.
+- **Alternatives:**
+  - *Refuse a leading or trailing space with 400.* Not chosen: the requester asked the service to trim.
+  - *Keep trailing spaces significant on SQL Server too.* Rejected: more build work in the owner filter and in every unique key, to keep a difference that is almost always a caller mistake.
+  - *Leave the gap and file a bug later.* Rejected: 2 owners would share data on SQL Server until then.
+  - *Postgres only, or case-insensitive comparison.* Rejected for the reasons in ADR-0002.
+- **Consequences:**
+  - Easier: an owner or key means the same record on both databases. Callers that pad a value by mistake still find their data.
+  - Harder: the service changes what the caller sent, so an answer can differ from the request by its outer spaces. The merged file and file group routes change in slice 4. Nothing is released yet, so no caller breaks.

@@ -1,6 +1,6 @@
 # ADR-0002: One relational database, Postgres or SQL Server, with exact comparison
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0018
 - **Context:**
   - The requester asked for the same stack as DKNet.Accounts.Api, with both Postgres and SQL Server supported.
   - DKNet.Accounts.Api picks its database with `Database:Provider`: `Postgres` (default) or `SqlServer`, each with its own migrations.

@@ -54,7 +54,7 @@
       "from": "be",
       "to": "api",
       "y": 170,
-      "label": "GET ?owner&appKey&settingKey",
+      "label": "GET ?owner&settingKey",
       "variant": "emphasis"
     },
     {

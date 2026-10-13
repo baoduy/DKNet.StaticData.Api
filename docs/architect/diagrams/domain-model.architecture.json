@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DKNet StaticData \u2014 Domain Model (design revision 4)",
+    "title": "DKNet StaticData \u2014 Domain Model (design revision 5)",
     "output": "domain-model.html",
     "quality_profile": "showcase"
   },
@@ -53,7 +53,7 @@
       "id": "setting",
       "type": "backend",
       "label": "UiSetting",
-      "sublabel": "AppKey, SettingKey, SettingType, Value",
+      "sublabel": "SettingKey, SettingType, Value",
       "pos": [
         300,
         300
@@ -67,7 +67,7 @@
       "id": "sgroup",
       "type": "backend",
       "label": "SettingGroup",
-      "sublabel": "AppKey, Name, Description",
+      "sublabel": "Name, Description",
       "pos": [
         750,
         300
@@ -109,7 +109,7 @@
       "id": "setting-group",
       "from": "setting",
       "to": "sgroup",
-      "label": "GroupId, same owner + AppKey",
+      "label": "GroupId, same owner",
       "variant": "emphasis"
     }
   ],
@@ -118,8 +118,8 @@
       "dot": "emerald",
       "title": "Invariants",
       "items": [
-        "Owner set at create, never changes",
-        "1 UiSetting per owner, AppKey, SettingKey",
+        "Owner set at create, never changes; caller text stored trimmed",
+        "1 UiSetting per owner and SettingKey",
         "A group is deleted only when nothing links to it"
       ]
     },

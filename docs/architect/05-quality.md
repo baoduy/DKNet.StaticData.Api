@@ -131,6 +131,8 @@ Integration tests run against real infrastructure (Policy 02):
 |---|---|---|
 | Every route, owner isolation, unique keys, foreign key refusals, `If-Match` and `Version` | Postgres and SQL Server in containers; every test runs on both | Collation, unique keys and concurrency differ between the 2 databases |
 | Owners and keys compare exactly (`A` and `a` are different) | Both databases | The SQL Server default collation ignores case |
+| Caller texts are trimmed: owner `customer-1 ` reaches the records of `customer-1`, a trailing tab answers 400, and display texts refuse `Café` | Both databases | SQL Server ignores trailing spaces in comparisons; Postgres does not (ADR-0018) |
+| `DELETE /v1/ui-settings/all` removes every setting and setting group of 1 owner, leaves other owners and all files, and answers 409 with no change when a setting is saved into a group during the erase | Both databases | All or nothing needs a real transaction and foreign key (ADR-0021) |
 | A list with no `fromDate` or `toDate` returns a record created and last updated more than 3 months ago; Flow 5 finds and updates that setting | Both databases, audit times set in the past | DKNet's default 3-month window must stay off |
 | Upload, download, delete and the size and extension checks, at 50,000,000 bytes and 1 byte more | Local blob provider on a temporary folder | Real streaming and hashing |
 | Idempotent upload: replay after 201 (same body, no `Location` or `ETag`), 409 while the first runs, 1 file stored | The database's idempotency store, both databases | Real reservation and replay |

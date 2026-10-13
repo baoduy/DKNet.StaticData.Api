@@ -451,11 +451,11 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect x="920" y="198" width="10" height="308" rx="3" class="c-database" stroke-width="1"/>
 
         <!-- Messages -->
-        <g data-edge-from="be" data-edge-to="api" data-edge-label="GET ?owner&amp;appKey&amp;settingKey" data-edge-key="0" data-edge-id="read">
+        <g data-edge-from="be" data-edge-to="api" data-edge-label="GET ?owner&amp;settingKey" data-edge-key="0" data-edge-id="read">
           <path data-composition-edge-from="be" data-composition-edge-to="api" data-composition-edge-id="read" data-composition-points="164,170;534,170" d="M 164 170 L 534 170" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <g>
-          <rect x="250.60000000000002" y="150" width="196.79999999999998" height="18" rx="3" class="c-mask"/>
-          <text x="349" y="160" class="t-edge-emphasis" font-size="11" text-anchor="middle">GET ?owner&amp;appKey&amp;settingKey</text>
+          <rect x="273.7" y="150" width="150.6" height="18" rx="3" class="c-mask"/>
+          <text x="349" y="160" class="t-edge-emphasis" font-size="11" text-anchor="middle">GET ?owner&amp;settingKey</text>
         </g>
         </g>
 

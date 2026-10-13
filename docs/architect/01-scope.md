@@ -25,8 +25,10 @@
 - Stream file bytes back on request, for every storage provider.
 - Keep file groups, and link each file to at most one group of the same owner.
 - Refuse to delete a file group while a file is linked to it.
-- Keep one UI setting per owner, app and screen, with an opaque JSON value of at most 65,536 bytes.
+- Keep one UI setting per owner and screen, with an opaque JSON value of at most 65,536 bytes. The owner names the app (ADR-0020).
 - Keep setting groups, and refuse to delete one while a setting is linked to it.
+- Erase all UI settings and setting groups of an owner in 1 call (ADR-0021).
+- Trim the outer white space of every caller text except the setting value and the idempotency key, so both databases treat it alike (ADR-0018).
 - Check the caller's app role on every `/v1` route: `staticdata.read` to read, `staticdata.write` to change (ADR-0016).
 - Keep every record under the owner the caller named at create. The owner never changes.
 - Answer a call only with records of the owner that call names.

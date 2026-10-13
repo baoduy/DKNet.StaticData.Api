@@ -1,0 +1,21 @@
+# ADR-0021: One route erases all UI settings of an owner
+
+- **Status:** Accepted
+- **Context:**
+  - Before this route, a caller erased an owner's settings by listing and deleting each record, settings before groups.
+  - The requester asked for 1 route that deletes all settings, then all setting groups (DRK-2190, round 2 answer 6). After the app key left (ADR-0020), it covers 1 owner.
+  - The owner must stay out of request logs and traces. They drop the query string, not the path (ADR-0005; 05-quality, Personal data).
+  - Many owners are GUIDs, and `DELETE /v1/ui-settings/{settingId}` takes a GUID.
+- **Decision:**
+  - `DELETE /v1/ui-settings/all?owner=<owner>` deletes every setting of the owner, then every setting group of the owner, all or nothing. It needs `staticdata.write`.
+  - It answers 204, also when there was nothing to delete.
+  - If a setting is saved into a group during the erase, it answers 409 and changes nothing. The caller repeats it.
+  - Files, file groups and other owners are untouched. It writes no log entry.
+  - The typed client gets 1 call for it.
+- **Alternatives:**
+  - *`DELETE /v1/ui-settings/{owner}`.* Rejected: the owner would sit in the path and get logged, and a GUID owner reads the same as a setting id.
+  - *No route; the caller deletes each record.* Rejected by the requester.
+  - *Erase files too.* Not asked for; files keep their own delete route.
+- **Consequences:**
+  - Easier: erasing an owner's settings is 1 call.
+  - Harder: one more route, and its race with a concurrent save, to build and test on both databases.

@@ -19,15 +19,16 @@ This service never writes:
 
 | Data | Store | Why |
 |---|---|---|
-| `StoredFile`, `FileGroup`, `UiSetting`, `SettingGroup` | One relational database: Postgres (default) or SQL Server, picked by `Database:Provider` (ADR-0002) | Unique keys, foreign keys and the owner filter need a relational store. The requester asked for both databases. |
+| `StoredFile`, `FileGroup`, `UiSetting`, `SettingGroup` | One relational database: Postgres (default) or SQL Server, picked by `Database:Provider` (ADR-0018) | Unique keys, foreign keys and the owner filter need a relational store. The requester asked for both databases. |
 | File bytes | One blob storage provider per deployment: `Local`, `AzureStorage` or `AwsS3` (ADR-0003) | Bytes up to 50,000,000 per file do not belong in database rows. |
 | Idempotency records | The same database, in the tables of the DKNet idempotency store for that database (ADR-0012) | No extra store to run. |
 
 Each database has its own migrations. Both create the same tables, keys and indexes.
 
-Owners and keys compare exactly on both databases (ADR-0002):
+Owners and keys compare exactly on both databases (ADR-0018):
 
-- The exact-compare columns are `OwnedBy` on all 4 tables, `UiSetting.AppKey`, `UiSetting.SettingKey`, `SettingGroup.AppKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`.
+- Every caller text is stored trimmed, except the setting value. SQL Server ignores trailing spaces when it compares text; Postgres does not. With no outer spaces stored or searched, both give the same answer.
+- The exact-compare columns are `OwnedBy` on all 4 tables, `UiSetting.SettingKey`, `SettingGroup.Name`, `FileGroup.Purpose` and `FileGroup.ExternalRef`.
 - On SQL Server, these columns use the binary collation `Latin1_General_100_BIN2`.
 - On Postgres, the default comparison is already exact. No column uses a case-insensitive type.
 
@@ -64,7 +65,7 @@ The caller id is the token's `client_id`, `azp` or `appid` claim (ADR-0016). It 
 |---|---|---|---|---|---|---|
 | `Id` | GUID | — | Yes | Primary key | `Guid.CreateVersion7()` | `groupId` in the API. |
 | `OwnedBy` | string | 255 | Yes | Index (`OwnedBy`, `CreatedOn`) | — | The owner. Never changes. Personal data. |
-| `Name` | string | 100 | Yes | — | — | |
+| `Name` | string | 100 | Yes | — | — | Display text (ADR-0019). Trimmed. |
 | `Purpose` | string | 100 | No | Index (`OwnedBy`, `Purpose`) | null | For example `customer-onboarding`. |
 | `ExternalRef` | string | 255 | No | Index (`OwnedBy`, `ExternalRef`) | null | For example a customer id. Personal data: may identify a person. |
 | `Version` | integer (32-bit) | — | Yes | — | 1 | Concurrency token. |
@@ -76,11 +77,10 @@ The foreign key from `StoredFile.GroupId` refuses a group delete while a file is
 | Field | Type | Length or precision | Required | Unique or indexed | Default | Notes |
 |---|---|---|---|---|---|---|
 | `Id` | GUID | — | Yes | Primary key | `Guid.CreateVersion7()` | `settingId` in the API. |
-| `OwnedBy` | string | 255 | Yes | Unique (`OwnedBy`, `AppKey`, `SettingKey`) | — | The owner. Never changes. Personal data. |
-| `AppKey` | string | 100 | Yes | Part of the unique key | — | Never changes. |
-| `SettingKey` | string | 200 | Yes | Part of the unique key | — | Never changes. |
-| `SettingType` | string | 50 | Yes | — | — | |
-| `GroupId` | GUID | — | No | Index (`GroupId`); foreign key to `SettingGroup.Id`, no cascade | null | Same owner and app key as the setting. |
+| `OwnedBy` | string | 255 | Yes | Unique (`OwnedBy`, `SettingKey`) | — | The owner. Never changes. Personal data. |
+| `SettingKey` | string | 200 | Yes | Part of the unique key | — | Never changes. Trimmed. |
+| `SettingType` | string | 50 | Yes | — | — | Trimmed. |
+| `GroupId` | GUID | — | No | Index (`GroupId`); foreign key to `SettingGroup.Id`, no cascade | null | Same owner as the setting. |
 | `Value` | text | Up to 65,536 UTF-8 bytes | Yes | — | — | JSON kept exactly as sent: `text` on Postgres, `nvarchar(max)` on SQL Server. Not expected to hold personal data. |
 | `SchemaVersion` | integer (32-bit) | — | Yes | — | 1 | 1 or more. |
 | `Version` | integer (32-bit) | — | Yes | — | 1 | Concurrency token. |
@@ -90,10 +90,9 @@ The foreign key from `StoredFile.GroupId` refuses a group delete while a file is
 | Field | Type | Length or precision | Required | Unique or indexed | Default | Notes |
 |---|---|---|---|---|---|---|
 | `Id` | GUID | — | Yes | Primary key | `Guid.CreateVersion7()` | `groupId` in the API. |
-| `OwnedBy` | string | 255 | Yes | Unique (`OwnedBy`, `AppKey`, `Name`) | — | The owner. Never changes. Personal data. |
-| `AppKey` | string | 100 | Yes | Part of the unique key | — | Never changes. |
-| `Name` | string | 100 | Yes | Part of the unique key | — | |
-| `Description` | string | 500 | No | — | null | |
+| `OwnedBy` | string | 255 | Yes | Unique (`OwnedBy`, `Name`) | — | The owner. Never changes. Personal data. |
+| `Name` | string | 100 | Yes | Part of the unique key | — | Display text (ADR-0019). Trimmed. |
+| `Description` | string | 500 | No | — | null | Display text (ADR-0019). Trimmed. |
 | `Version` | integer (32-bit) | — | Yes | — | 1 | Concurrency token. |
 
 ### FileSettings (configuration, one per deployment)
@@ -125,9 +124,9 @@ The setting names under `BlobStorage:LocalFolder`, `BlobService:AzureStorage` an
 |---|---|---|
 | `StoredFile` and its bytes | The caller deletes the file | `DELETE /v1/files/{fileId}`: the row, then the bytes (ADR-0008) |
 | `FileGroup` | The caller deletes it, after unlinking or deleting its files | `DELETE /v1/file-groups/{groupId}` |
-| `UiSetting` | The caller deletes it | `DELETE /v1/ui-settings/{settingId}` |
-| `SettingGroup` | The caller deletes it, after unlinking or deleting its settings | `DELETE /v1/ui-setting-groups/{groupId}` |
+| `UiSetting` | The caller deletes it, or erases all of the owner's settings | `DELETE /v1/ui-settings/{settingId}`, or `DELETE /v1/ui-settings/all` (ADR-0021) |
+| `SettingGroup` | The caller deletes it after unlinking or deleting its settings, or erases all of the owner's settings | `DELETE /v1/ui-setting-groups/{groupId}`, or `DELETE /v1/ui-settings/all` (ADR-0021) |
 | Idempotency record | Its `ExpiresAt` passes: 330 seconds after the request starts, or 4 hours after a 2xx answer. Then up to 1 more hour until the next sweep. | This service's hourly sweep. The package never deletes a row (ADR-0012). |
 | Orphaned bytes (a failed best-effort delete) | An operator removes them | The operator, using the warning log entry that names the storage key |
 
-No record expires on its own. Erasing all of an owner's data is the caller's job: it lists and deletes each record. The list routes have no activity window, so a list with no `fromDate` or `toDate` reaches every record of the owner, however old. Idempotency records are not reachable through the API; the hourly sweep removes them within 5 hours.
+No record expires on its own. Erasing all of an owner's data is the caller's job. It erases the owner's UI settings and setting groups with 1 call: `DELETE /v1/ui-settings/all?owner=<owner>`. It erases files and file groups by listing and deleting each record. The list routes have no activity window, so a list with no `fromDate` or `toDate` reaches every record of the owner, however old. Idempotency records are not reachable through the API; the hourly sweep removes them within 5 hours.
