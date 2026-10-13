@@ -18,9 +18,9 @@ internal sealed class UiSettingConfigs : DefaultEntityTypeConfiguration<UiSettin
         builder.Property(s => s.SettingKey).HasMaxLength(200).IsRequired();
         builder.Property(s => s.SettingType).HasMaxLength(50).IsRequired();
 
-        // At most 65,536 bytes as sent, so never more characters: nvarchar(max) on SQL Server, text on Postgres
-        // (CoreDbContext), so the value keeps every byte as sent.
-        builder.Property(s => s.Value).HasMaxLength(65_536).IsRequired();
+        // No maximum length (spec DRK-2245 §3a): text on Postgres, nvarchar(max) on SQL Server, so the value keeps every
+        // byte as sent; its validator limits it to 65,536 UTF-8 bytes.
+        builder.Property(s => s.Value).IsRequired();
 
         // At most one setting per owner and key.
         builder.HasIndex(s => new { s.OwnedBy, s.SettingKey }).IsUnique();

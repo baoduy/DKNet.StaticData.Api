@@ -156,8 +156,10 @@ public class InfraTests
 
         foreach (var entityType in model.GetEntityTypes())
         foreach (var property in entityType.GetProperties())
-            // Check if property is a string type
-            if (property.ClrType == typeof(string))
+            // Check if property is a string type. Spec DRK-2245 §3a exempts exactly UiSetting.Value: the JSON value is
+            // text on Postgres and nvarchar(max) on SQL Server, bounded at 65,536 UTF-8 bytes by its validator instead.
+            if (property.ClrType == typeof(string)
+                && !(entityType.ClrType.Name == "UiSetting" && property.Name == "Value"))
             {
                 var maxLength = property.GetMaxLength();
                 var columnType = property.GetColumnType();

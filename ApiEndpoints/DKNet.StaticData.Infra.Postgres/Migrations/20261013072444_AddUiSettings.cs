@@ -45,7 +45,7 @@ namespace DKNet.StaticData.Infra.Postgres.Migrations
                     SchemaVersion = table.Column<int>(type: "integer", nullable: false),
                     SettingKey = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     SettingType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Value = table.Column<string>(type: "text", maxLength: 65536, nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: false),
                     Version = table.Column<int>(type: "integer", nullable: false),
                     CreatedBy = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     CreatedOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),

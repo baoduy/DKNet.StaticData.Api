@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DKNet.StaticData.Infra.MsSql.Migrations
 {
     [DbContext(typeof(CoreDbContext))]
-    [Migration("20261013045956_AddUiSettings")]
+    [Migration("20261013072446_AddUiSettings")]
     partial class AddUiSettings
     {
         /// <inheritdoc />
@@ -244,7 +244,6 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasMaxLength(65536)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Version")

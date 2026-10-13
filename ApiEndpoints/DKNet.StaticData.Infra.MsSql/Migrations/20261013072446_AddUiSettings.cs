@@ -45,7 +45,7 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
                     SchemaVersion = table.Column<int>(type: "int", nullable: false),
                     SettingKey = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false, collation: "Latin1_General_100_BIN2"),
                     SettingType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Value = table.Column<string>(type: "nvarchar(max)", maxLength: 65536, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Version = table.Column<int>(type: "int", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     CreatedOn = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),

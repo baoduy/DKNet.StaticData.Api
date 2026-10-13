@@ -7,9 +7,9 @@ namespace DKNet.StaticData.Api.ApiEndpoints.UiSettings;
 
 /// <summary>
 /// The 5 UI setting routes and the erase route under <c>/v1/ui-settings</c> (spec DRK-2245 §3a). Checks answer in order:
-/// token and caller id (401) and app role (403) in the authorization middleware, then the owner (400), then the body; an
-/// update then needs its version tag (rule R2). A create takes no idempotency key: the unique setting key stops a
-/// duplicate. The id routes take only a GUID, so <c>/all</c> is always the erase. Every route keeps the default request
+/// token and caller id (401) and app role (403) in the authorization middleware, then the owner (400, every
+/// <c>/v1</c> group's filter), then the body; an update then needs its version tag (rule R2). A create takes no
+/// idempotency key: the unique setting key stops a duplicate. The id routes take only a GUID, so <c>/all</c> is always the erase. Every route keeps the default request
 /// limits.
 /// </summary>
 internal sealed class UiSettingV1Endpoint : IEndpointConfig
@@ -29,7 +29,6 @@ internal sealed class UiSettingV1Endpoint : IEndpointConfig
         // The same group filters as the file routes, in the same order (FileV1Endpoint).
         group.AddEndpointFilter<CallerLogScopeFilter>();
         group.AddEndpointFilter<DependencyFailureFilter>();
-        group.AddEndpointFilter<OwnerFilter>();
 
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(AuthConfig.WriteRole);

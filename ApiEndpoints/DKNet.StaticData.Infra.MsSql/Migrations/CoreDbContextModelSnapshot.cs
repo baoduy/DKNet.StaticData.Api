@@ -241,7 +241,6 @@ namespace DKNet.StaticData.Infra.MsSql.Migrations
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasMaxLength(65536)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Version")
