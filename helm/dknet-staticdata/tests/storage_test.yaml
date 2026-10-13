@@ -1,0 +1,27 @@
+suite: Local file storage contract
+templates:
+  - charts/api/templates/volumes.yaml
+tests:
+  - it: creates a persistent Local volume using the default storage class
+    asserts:
+      - hasDocuments: {count: 1}
+      - isKind: {of: PersistentVolumeClaim}
+      - equal: {path: metadata.name, value: staticdata-api-files}
+      - equal: {path: spec.resources.requests.storage, value: 10Gi}
+      - equal: {path: spec.accessModes, value: [ReadWriteOnce]}
+      - notExists: {path: spec.storageClassName}
+  - it: accepts storage shared by all replicas
+    set:
+      api.volumes.files.size: 100Gi
+      api.volumes.files.accessMode: ReadWriteMany
+      api.volumes.files.storageClassName: shared-files
+    asserts:
+      - equal: {path: spec.resources.requests.storage, value: 100Gi}
+      - equal: {path: spec.accessModes, value: [ReadWriteMany]}
+      - equal: {path: spec.storageClassName, value: shared-files}
+  - it: creates no PVC when the cloud provider uses an empty Local scratch volume
+    set:
+      api.configMap.BlobStorage__Provider: AzureStorage
+      api.volumes.files.emptyDir: true
+    asserts:
+      - hasDocuments: {count: 0}

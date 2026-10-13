@@ -1,0 +1,21 @@
+# ADR-0003: File bytes in blob storage through DKNet.Svc.BlobStorage
+
+- **Status:** Accepted
+- **Context:**
+  - The requester asked for file bytes in blob storage through `DKNet.Svc.BlobStorage`, with local file, Azure Storage and AWS S3.
+  - The DKNet packages give one `IBlobService` with 3 providers. Each provider saves from a stream and opens a read stream, without loading the whole file.
+  - The package treats a blob name with no extension as a folder. On a folder, `DeleteAsync` deletes everything under that prefix, not one blob.
+  - The package's extension check runs on the blob name.
+- **Decision:**
+  - One provider per deployment, picked by `BlobStorage:Provider`: `Local`, `AzureStorage` or `AwsS3`. Each uses the package's own settings section.
+  - The storage key is `files/<FileId><extension>`, the extension in lowercase and always on the allow-list.
+  - The key never holds the owner or the file name.
+  - Metadata stays in the database; bytes stay in blob storage.
+- **Alternatives:**
+  - *Bytes in the database.* Rejected: 50,000,000-byte rows bloat backups and slow every query on the table.
+  - *A key built from the owner and the file name.* Rejected: caller text in a blob path invites path tricks, and the owner is personal data.
+  - *A key with no extension.* Rejected: the package would treat it as a folder, and a delete could remove other blobs.
+  - *Write a storage client in this repo.* Rejected: DKNet.Svc.BlobStorage already does it.
+- **Consequences:**
+  - Easier: one code path for 3 providers; the provider is a deployment choice.
+  - Harder: a file lives in 2 stores, so a failure between them can orphan bytes (ADR-0008, 03 Flows 1 and 3).

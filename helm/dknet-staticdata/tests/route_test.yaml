@@ -1,0 +1,24 @@
+suite: internal service and optional route
+templates:
+  - charts/api/templates/httproute.yaml
+tests:
+  - it: has no HTTPRoute by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: opts into an existing Gateway
+    set:
+      api.httpRoute.enabled: true
+      api.httpRoute.parentRefs:
+        - name: internal-gateway
+          namespace: gateway-system
+      api.httpRoute.hostnames: [staticdata.example.com]
+    asserts:
+      - isKind:
+          of: HTTPRoute
+      - equal:
+          path: spec.parentRefs[0].name
+          value: internal-gateway
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 80

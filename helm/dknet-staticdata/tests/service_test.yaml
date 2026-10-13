@@ -1,0 +1,12 @@
+suite: internal service contract
+templates:
+  - charts/api/templates/service.yaml
+tests:
+  - it: exposes HTTP inside the cluster
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].targetPort
+          value: http

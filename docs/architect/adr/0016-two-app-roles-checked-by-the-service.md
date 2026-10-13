@@ -1,0 +1,34 @@
+# ADR-0016: 2 app roles, checked by the service
+
+- **Status:** Accepted
+- **Context:**
+  - ADR-0013 checked no permission: any caller with a valid token could call every `/v1` route.
+  - ADR-0013 also asked for "Assignment required" in Microsoft Entra ID. With it on, Entra ID gives a token only to apps that hold a role assignment on this API. So operators must define at least 1 app role, which ADR-0013 said they would not.
+  - The requester decided on 2026-10-09 (DRK-2188, answers 1 A and 6 A) that the service has 2 app roles, `staticdata.read` and `staticdata.write`, and checks them.
+  - An Entra ID client-credentials token carries app roles in the `roles` claim, not scopes (ADR-0006).
+  - The audit fields need the caller id, so a token without one still cannot be accepted.
+- **Decision:**
+  - Operators define 2 app roles for applications on this API's app registration in Entra ID: `staticdata.read` and `staticdata.write`. They assign each calling app the roles it needs.
+  - Every `GET` route under `/v1` needs `staticdata.read`. Every `POST`, `PUT` and `DELETE` route under `/v1` needs `staticdata.write`.
+  - `staticdata.write` does not include reading. An app that reads and writes holds both roles.
+  - The service reads the roles from the token's `roles` claim. It checks no scope.
+  - A valid token with a caller id but without the role the route needs answers 403, as problem details. Nothing changes.
+  - The role check comes right after the token check, before any input check.
+  - A missing or invalid token answers 401. The caller id is the first of `client_id`, `azp`, `appid`, and a valid token with none of them answers 401. Both rules carry over from ADR-0013 unchanged. The caller id still stamps the audit fields.
+  - Each deployment keeps "Assignment required" on. An app with no role assignment then gets no token at all.
+  - The local Keycloak under the AppHost defines both roles and maps them into the same `roles` claim. Its caller client holds both roles. It defines no scopes for this service.
+  - The owner stays a partition, not a permission (ADR-0005). A caller with `staticdata.read` can read any owner's records. A caller with `staticdata.write` can create, change and delete them for any owner.
+  - `/healthz` and `/healthz/detail` stay anonymous (ADR-0015).
+- **Alternatives:**
+  - *Keep ADR-0013: authentication only.* Rejected by the requester (answer 6 A).
+  - *The roles only decide who gets a token; the service checks none.* Rejected by the requester (answer 6 B not chosen). An app with only `staticdata.read` could still upload and delete.
+  - *`staticdata.write` includes reading.* Not chosen: answer 6 A keeps the 2 roles apart, so an app that only writes cannot read.
+  - *The 4 permissions of ADR-0006.* Not chosen: the requester named 2 roles.
+  - *Scopes instead of app roles.* Rejected: an Entra ID client-credentials token carries app roles, not scopes.
+  - *A permission per owner.* Rejected: the owner stays a value the caller names (ADR-0005).
+- **Consequences:**
+  - Easier: an app that only reads cannot upload, change or delete. "Assignment required" now has roles to assign.
+  - Harder: operators define 2 app roles in Entra ID and assign them per calling app.
+  - Harder: slices 2 to 4 each test the 403 answers on their routes.
+  - Harder: a caller with a role still reaches every owner's data. The requester accepted this risk.
+  - Supersedes ADR-0013.

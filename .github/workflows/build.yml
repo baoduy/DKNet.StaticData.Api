@@ -1,0 +1,66 @@
+name: Build & Test
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-test:
+    # SQL Server 2022 must run natively on amd64, never SQL Edge in CI.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify Docker and amd64
+        run: |
+          test "$(uname -m)" = x86_64
+          docker info
+          test -z "${TEST_SQLSERVER_IMAGE:-}"
+      - name: Restore
+        run: dotnet restore DKNet.StaticData.sln
+      - name: Build
+        run: dotnet build DKNet.StaticData.sln --no-restore --configuration Release
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Prove database Secret configuration
+        run: |
+          python3 -m pip install PyYAML==6.0.3
+          helm dependency build helm/dknet-staticdata
+          python3 .github/scripts/prove-secret-config.py
+      - name: Full suite (Postgres and SQL Server 2022)
+        run: >-
+          dotnet test DKNet.StaticData.sln --no-build --configuration Release
+          --settings coverage.runsettings --collect:"XPlat Code Coverage"
+          --logger trx --results-directory TestResults
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          retention-days: 7
+  helm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Install helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.2.1
+      - name: Verify chart
+        run: bash .github/scripts/verify-chart.sh

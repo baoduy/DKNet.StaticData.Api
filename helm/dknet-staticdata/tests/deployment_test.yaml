@@ -1,0 +1,96 @@
+suite: API deployment contract
+templates:
+  - charts/api/templates/deployment.yaml
+tests:
+  - it: runs with status probes and existing database Secret
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: staticdata-database
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+  - it: accepts another deployment-managed Secret
+    set:
+      api.secretFrom: [other-database]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: other-database
+  - it: can disable the API deployment
+    set:
+      api.deployment.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: mounts Local files persistently with writable disk backed temporary space
+    asserts:
+      - equal: {path: spec.replicas, value: 1}
+      - equal: {path: spec.strategy, value: {type: Recreate}}
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: files, mountPath: /var/lib/staticdata, readOnly: false}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: files
+            persistentVolumeClaim: {claimName: staticdata-api-files}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: tmp, mountPath: /tmp, readOnly: false}
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: tmp, emptyDir: {}}
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.ephemeral-storage
+          value: 2Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.ephemeral-storage
+          value: 4Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 256Mi
+  - it: takes Azure credentials from the existing Secret delivery
+    set:
+      api.configMap.BlobStorage__Provider: AzureStorage
+      api.secretFrom: [staticdata-database, staticdata-azure]
+      api.volumes.files.emptyDir: true
+      api.deployment.strategy.type: RollingUpdate
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content: {secretRef: {name: staticdata-azure}}
+      - equal: {path: spec.strategy.type, value: RollingUpdate}
+      - exists: {path: spec.strategy.rollingUpdate}
+      - equal:
+          path: spec.template.spec.volumes
+          value: [{name: files, emptyDir: {}}, {name: tmp, emptyDir: {}}]
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts
+          value: [{name: files, mountPath: /var/lib/staticdata, readOnly: false}, {name: tmp, mountPath: /tmp, readOnly: false}]
+  - it: takes S3 credentials from the existing Secret delivery
+    set:
+      api.configMap.BlobStorage__Provider: AwsS3
+      api.secretFrom: [staticdata-database, staticdata-s3]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content: {secretRef: {name: staticdata-s3}}

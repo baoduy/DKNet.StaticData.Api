@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>true</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
+        <PackageId>DKNet.StaticData.Client</PackageId>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <!-- Directory.Packages.props sets a repo-wide PackageIcon pointing at a NugetLogo.png this repo does not
+             hold (every other project sets IsPackable=false), so it is overridden empty here, as in
+             DKNet.Accounts.Client. -->
+        <PackageIcon></PackageIcon>
+        <PackageDescription>
+            Typed .NET client for the DKNet StaticData file routes. Requires a GitHub personal access token with
+            read:packages scope to restore: add a NuGet.Config source authenticated with that token (e.g. via
+            the NUGET_GITHUB_TOKEN/GH_TOKEN environment variable), never committing the token itself.
+        </PackageDescription>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Http"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+    </ItemGroup>
+</Project>
