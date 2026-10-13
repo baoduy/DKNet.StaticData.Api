@@ -213,9 +213,9 @@ public sealed class StaticDataFileClient : IStaticDataFileClient
         CancellationToken ct = default)
     {
         var parameters = PageQuery(pageNumber, pageSize, fromDate, toDate);
-        if (settingKey is not null)
+        if (settingKey is { } key)
         {
-            parameters.Add(("settingKey", settingKey));
+            parameters.Add(("settingKey", key));
         }
 
         if (groupId is { } group)
