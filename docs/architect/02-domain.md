@@ -14,7 +14,7 @@
 | File | One stored document: its metadata in the database and its bytes in blob storage. The aggregate is `StoredFile`. | A file group. |
 | Stored bytes | The content of a file in blob storage. They never change after upload. | The file's metadata. |
 | Storage key | The name of the bytes in blob storage: `files/<file id><extension>`. Internal; never returned to a caller. | The file name. |
-| File name | The name the caller gave the file at upload, for example `passport.pdf`. It is returned on download. | The storage key. |
+| File name | The name the caller gave the file at upload, trimmed, for example `passport.pdf`. It is returned on download. | The storage key. |
 | Allow-list | The file extensions this deployment accepts, set by the operator (ADR-0007). | The content type, which the service derives from the extension. |
 | Checksum | The SHA-256 hash of the stored bytes, as 64 lowercase hex characters. | The `Version` of the record. |
 | File group | A named set of files of one owner, for example one customer onboarding pack. | A setting group. |

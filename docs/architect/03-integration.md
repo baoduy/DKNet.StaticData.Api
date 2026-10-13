@@ -149,7 +149,7 @@ File metadata (every file answer):
 | Field | Type | Notes |
 |---|---|---|
 | `fileId` | GUID | |
-| `owner` | string | As sent at create. |
+| `owner` | string | As stored at create: trimmed, case kept. |
 | `fileName` | string | |
 | `contentType` | string | Derived from the extension. |
 | `sizeBytes` | integer | |
