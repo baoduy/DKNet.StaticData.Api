@@ -12,14 +12,3 @@ internal sealed class SettingGroupById : Specification<SettingGroup>
 
     #endregion
 }
-
-/// <summary>The owner's setting group with this exact name, other than the group <c>exceptId</c> names.</summary>
-internal sealed class SettingGroupByName : Specification<SettingGroup>
-{
-    #region Constructors
-
-    public SettingGroupByName(string name, Guid? exceptId = null) =>
-        WithFilter(g => g.Name == name && g.Id != exceptId);
-
-    #endregion
-}

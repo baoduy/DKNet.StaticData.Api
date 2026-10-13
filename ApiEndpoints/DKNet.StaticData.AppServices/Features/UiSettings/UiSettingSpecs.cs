@@ -13,16 +13,6 @@ internal sealed class UiSettingById : Specification<UiSetting>
     #endregion
 }
 
-/// <summary>The owner's setting with this exact key.</summary>
-internal sealed class UiSettingByKey : Specification<UiSetting>
-{
-    #region Constructors
-
-    public UiSettingByKey(string settingKey) => WithFilter(s => s.SettingKey == settingKey);
-
-    #endregion
-}
-
 /// <summary>The settings linked to one setting group.</summary>
 internal sealed class UiSettingsInGroup : Specification<UiSetting>
 {

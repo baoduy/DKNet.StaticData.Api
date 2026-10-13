@@ -9,7 +9,8 @@ namespace DKNet.StaticData.AppServices.Features.SettingGroups;
 /// <summary>
 ///     Replaces a setting group's name and description when the caller names its current version. The fields were checked
 ///     by their validator; the rest answers in the order of rule R3: the version tag sent at all (428), the group (404),
-///     the version (412), the name used by another group of the owner (409).
+///     the version (412), then the name used by another group of the owner (409), which the database's unique key
+///     refuses on save.
 /// </summary>
 public sealed class UpdateSettingGroupHandler(IRepositorySpec repository, ICallerAccessor caller)
 {
@@ -44,13 +45,7 @@ public sealed class UpdateSettingGroupHandler(IRepositorySpec repository, ICalle
             return Result.Fail<SettingGroupDto>(new FileError(FileErrorKind.VersionStale, SettingGroupAnswers.VersionStale));
         }
 
-        var name = TextRules.Trim(fields.Name)!;
-        if (await repository.AnyAsync(new SettingGroupByName(name, groupId), cancellationToken))
-        {
-            return Result.Fail<SettingGroupDto>(new FileError(FileErrorKind.Conflict, SettingGroupAnswers.NameUsed));
-        }
-
-        group.Update(name, TextRules.Trim(fields.Description), caller.CallerId ?? string.Empty);
+        group.Update(TextRules.Trim(fields.Name)!, TextRules.Trim(fields.Description), caller.CallerId ?? string.Empty);
         try
         {
             await repository.SaveChangesAsync(cancellationToken);

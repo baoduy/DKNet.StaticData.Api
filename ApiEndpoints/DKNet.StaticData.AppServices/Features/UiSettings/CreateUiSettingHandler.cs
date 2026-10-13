@@ -10,8 +10,8 @@ namespace DKNet.StaticData.AppServices.Features.UiSettings;
 
 /// <summary>
 ///     Creates a setting at version 1 with the trimmed texts and the value as sent; the fields were checked by their
-///     validator. The rest answers in the order of rule R1: the group (404), then the setting key already used (409). A
-///     group deleted, or the same key saved, between those checks and this save answers the same 404 or 409.
+///     validator. The rest answers in the order of rule R1: the group (404), then the setting key already used (409),
+///     which the database's unique key refuses. A group deleted between its check and this save answers the same 404.
 /// </summary>
 public sealed class CreateUiSettingHandler(IRepositorySpec repository, ICallerAccessor caller)
 {
@@ -24,13 +24,7 @@ public sealed class CreateUiSettingHandler(IRepositorySpec repository, ICallerAc
             return Result.Fail<UiSettingDto>(new FileError(FileErrorKind.NotFound, SettingGroupAnswers.NotFound));
         }
 
-        var settingKey = TextRules.Trim(fields.SettingKey)!;
-        if (await repository.AnyAsync(new UiSettingByKey(settingKey), cancellationToken))
-        {
-            return Result.Fail<UiSettingDto>(new FileError(FileErrorKind.Conflict, UiSettingAnswers.AlreadyExists));
-        }
-
-        var setting = UiSetting.Create(settingKey, TextRules.Trim(fields.SettingType)!, fields.GroupId, fields.Value!,
+        var setting = UiSetting.Create(TextRules.Trim(fields.SettingKey)!, TextRules.Trim(fields.SettingType)!, fields.GroupId, fields.Value!,
             fields.SchemaVersion ?? 1, caller.CallerId ?? string.Empty);
         await repository.AddAsync(setting, cancellationToken);
         try
