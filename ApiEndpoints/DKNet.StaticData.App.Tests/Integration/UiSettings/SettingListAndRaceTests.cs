@@ -139,6 +139,29 @@ public sealed class SettingListAndRaceTests(FilesHost hosts) : IClassFixture<Fil
             : [.. ids.OrderByDescending(i => i.Value).Select(i => i.Key)]);
     }
 
+    public static IEnumerable<object[]> RefusedKeyFilters => Databases.With(
+        ["customers.list.table\t"],
+        ["  "],
+        [new string('k', 201) + " "]);
+
+    /// <summary>
+    /// DRK-2249 finding 1, spec DRK-2245 §3 "Text rules": the setting key filter is an optional caller text of up to 200
+    /// characters after trimming; a control character, only spaces or a longer key answers 400 naming the setting key.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RefusedKeyFilters))]
+    public async Task ASettingKeyFilterWithAControlCharacterOrOnlySpacesOrTooLongIsRefused(TestDatabase database, string settingKey)
+    {
+        var api = await hosts.OnAsync(database);
+
+        using var response = await api.ListSettingsAsync(
+            Callers.ReportSvc, "backoffice-web", $"&settingKey={Uri.EscapeDataString(settingKey)}");
+
+        await response.ShouldBeProblemDetailsAsync(HttpStatusCode.BadRequest);
+        (await response.JsonAsync()).GetProperty("errors").EnumerateArray()
+            .Select(e => e.GetProperty("field").GetString()).Distinct().ShouldBe(["SettingKey"]);
+    }
+
     public static IEnumerable<object[]> Pages => Databases.With(
         ["the settings", "&pageNumber=0&pageSize=0"],
         ["the settings", "&pageNumber=-1&pageSize=5000"],
