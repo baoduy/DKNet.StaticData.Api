@@ -3,6 +3,7 @@ using DKNet.StaticData.App.Tests.Files.Support;
 using DKNet.StaticData.App.TestSupport;
 using DKNet.StaticData.AppServices.Features.FileGroups;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace DKNet.StaticData.App.Tests.Integration.FileGroups;
 
@@ -34,6 +35,18 @@ public sealed class ForeignKeyViolationTests(FilesHost hosts) : IClassFixture<Fi
         var refused = await Should.ThrowAsync<DbException>(() => SetAsync(api, "FileName", DBNull.Value, fileId));
 
         ForeignKeyViolation.IsIn(new DbUpdateException("The save failed.", refused)).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Brief DRK-2246 row 17: Postgres 18 refuses a delete under <c>ON DELETE RESTRICT</c> with SQLSTATE 23001
+    /// (restrict_violation), where Postgres 16, the suite's server, raises 23503. Both are the same refused link.
+    /// </summary>
+    [Fact]
+    public void APostgresRestrictViolationIsAForeignKeyViolation()
+    {
+        var refused = new PostgresException("update or delete violates RESTRICT setting", "ERROR", "ERROR", "23001");
+
+        ForeignKeyViolation.IsIn(new DbUpdateException("The save failed.", refused)).ShouldBeTrue();
     }
 
     [Fact]

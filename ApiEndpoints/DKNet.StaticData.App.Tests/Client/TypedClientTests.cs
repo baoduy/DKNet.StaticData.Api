@@ -123,7 +123,7 @@ public sealed class TypedClientTests(FilesHost hosts) : IClassFixture<FilesHost>
     /// The calling service's container: the typed client registered with the service's address and the calling
     /// service's own <see cref="BearerTokenHandler"/>, sending through the test host's in-memory transport.
     /// </summary>
-    private static ServiceProvider ClientOf(FilesApi api, string token)
+    internal static ServiceProvider ClientOf(FilesApi api, string token)
     {
         var services = new ServiceCollection();
         services.AddSingleton(new BearerTokenHandler(token));
@@ -134,7 +134,7 @@ public sealed class TypedClientTests(FilesHost hosts) : IClassFixture<FilesHost>
     }
 
     /// <summary>The calling service's own credential handler: attaches its bearer token to every request.</summary>
-    private sealed class BearerTokenHandler(string token) : DelegatingHandler
+    internal sealed class BearerTokenHandler(string token) : DelegatingHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {

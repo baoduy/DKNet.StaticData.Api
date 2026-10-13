@@ -1,6 +1,7 @@
 using DKNet.StaticData.Api.Configs;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
 using DKNet.StaticData.Api.Configs.Jobs;
+using DKNet.StaticData.Api.ApiEndpoints.Files;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,7 +52,9 @@ await builder.Build()
     {
         o.RequireAuthorization = feature.RequireAuthorization;
         o.EnableVersioning = feature.EnableVersioning;
-        o.ConfigureGroup = (group, _) => group.AddFluentValidationAutoValidation();
+        // Every /v1 route needs its owner (ADR-0005), checked before the body so the owner 400 comes first (spec DRK-2245
+        // §6 R4): group filters run in the order they are added, and this runs before each group's own Map.
+        o.ConfigureGroup = (group, _) => group.AddEndpointFilter<OwnerFilter>().AddFluentValidationAutoValidation();
     }, typeof(Program).Assembly));
 
 return 0;

@@ -70,8 +70,8 @@ public sealed class GroupAnswerTests(FilesHost hosts) : IClassFixture<FilesHost>
         };
 
         await response.ShouldBeProblemDetailsAsync(HttpStatusCode.BadRequest);
-        (await response.JsonAsync()).GetProperty("detail").GetString().ShouldBe(
-            "The owner query parameter is required: 1 to 255 characters, not only white space, no control character.");
+        // spec DRK-2245 §3: the owner check runs through FluentValidation, so the problem names the owner, in its own words
+        (await response.Content.ReadAsStringAsync()).ShouldContain("owner", Case.Insensitive, "the 400 does not name the owner");
         var group = await api.GroupAsync("customer-1", groupId);
         group.GetProperty("name").GetString().ShouldBe("Onboarding pack");
         group.GetProperty("version").GetInt32().ShouldBe(1);

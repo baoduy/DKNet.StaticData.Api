@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace DKNet.StaticData.App.Tests.FileGroups;
 
 /// <summary>
-/// Spec DRK-2235 §5 "Create a group": the group fields, kept exactly as sent, and the idempotency key, with the
+/// Spec DRK-2235 §5 "Create a group": the group fields, trimmed under spec DRK-2245 §3, and the idempotency key, with the
 /// upload's rules scoped by caller, owner, route and key.
 /// </summary>
 public sealed class CreateGroupTests(FilesHost hosts) : IClassFixture<FilesHost>
@@ -102,10 +102,13 @@ public sealed class CreateGroupTests(FilesHost hosts) : IClassFixture<FilesHost>
         (await api.GroupNamesAsync("customer-1")).ShouldBeEmpty();
     }
 
-    /// <summary>Scenario: The group name is kept exactly as sent.</summary>
+    /// <summary>
+    /// Scenario: The group name is kept exactly as sent — rewritten by spec DRK-2245 §3 "Text rules on every /v1 route":
+    /// the name is trimmed before it is stored, and its case is kept.
+    /// </summary>
     [Theory]
     [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
-    public async Task TheGroupNameIsKeptExactlyAsSent(TestDatabase database)
+    public async Task TheGroupNameIsStoredTrimmedWithItsCase(TestDatabase database)
     {
         var api = await hosts.OnAsync(database);
 
@@ -114,9 +117,9 @@ public sealed class CreateGroupTests(FilesHost hosts) : IClassFixture<FilesHost>
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.Created);
         var created = await response.JsonAsync();
-        created.GetProperty("name").GetString().ShouldBe(" Onboarding Pack");
+        created.GetProperty("name").GetString().ShouldBe("Onboarding Pack");
         (await api.GroupAsync("customer-1", created.GetProperty("groupId").GetGuid()))
-            .GetProperty("name").GetString().ShouldBe(" Onboarding Pack");
+            .GetProperty("name").GetString().ShouldBe("Onboarding Pack");
     }
 
     /// <summary>Scenario: Two groups of one owner may have the same name.</summary>

@@ -1,6 +1,9 @@
 using DKNet.EfCore.Abstractions.Entities;
 using DKNet.EfCore.DataAuthorization;
 using DKNet.StaticData.Domains.Features.FileGroups.Entities;
+using DKNet.StaticData.Domains.Features.SettingGroups.Entities;
+using DKNet.StaticData.Domains.Features.UiSettings.Entities;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace DKNet.StaticData.Infra.Contexts;
 
@@ -21,10 +24,19 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
     #region Methods
 
     /// <summary>
-    /// On SQL Server, every owner column and the file group's purpose and external reference compare exactly, as they
-    /// do on Postgres by default (design <c>04-data.md</c>, ADR-0002): the binary collation <see cref="ExactCollation"/>.
-    /// Runs after DKNet's auto-config has applied every
-    /// entity configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
+    /// EF Core's own Error entry for a failed save is not written: it quotes the database's message, and SQL Server's
+    /// duplicate key message holds the key, the owner included (spec DRK-2245, no owner in any log entry). A save that
+    /// loses a race for a unique key answers 409 without it; any other failed save still writes the service's own
+    /// Error entry, naming the database and the exception type.
+    /// </summary>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(CoreEventId.SaveChangesFailed));
+
+    /// <summary>
+    /// On SQL Server, every owner column, the file group's purpose and external reference, the setting key and the
+    /// setting group name compare exactly, as they do on Postgres by default (design <c>04-data.md</c>, ADR-0002): the
+    /// binary collation <see cref="ExactCollation"/>. Runs after DKNet's auto-config has applied every entity
+    /// configuration, so each <see cref="IOwnedBy"/> entity is already in the model.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +51,8 @@ internal class CoreDbContext(DbContextOptions options, IEnumerable<IDataOwnerPro
         var group = modelBuilder.Entity<FileGroup>();
         group.Property(g => g.Purpose).UseCollation(ExactCollation);
         group.Property(g => g.ExternalRef).UseCollation(ExactCollation);
+        modelBuilder.Entity<UiSetting>().Property(s => s.SettingKey).UseCollation(ExactCollation);
+        modelBuilder.Entity<SettingGroup>().Property(g => g.Name).UseCollation(ExactCollation);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

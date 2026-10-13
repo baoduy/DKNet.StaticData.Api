@@ -1,10 +1,11 @@
 # DKNet.StaticData.Client
 
 A typed .NET client for the DKNet StaticData file routes: upload, list, read, download and delete a file
-under an owner, keep an owner's files together in file groups, and link a file to a group or unlink it.
+under an owner, keep an owner's files together in file groups, link a file to a group or unlink it, and keep an
+owner's UI settings in setting groups.
 
 - Every call takes the owner. The upload and the group create also take the idempotency key.
-- The group update and the link take the version you last read and send it as `If-Match: "<version>"`. Each
+- The group, setting and setting group updates and the link take the version you last read and send it as `If-Match: "<version>"`. Each
   returns the record with its new version.
 - The client never gets, keeps or logs a credential. The consuming application attaches its own bearer
   token through a `DelegatingHandler` it registers.
@@ -74,6 +75,27 @@ await client.DeleteGroupAsync("customer-1", group.GroupId);
 - A version that is no longer the record's answers 412 Precondition Failed, a group delete while a file is linked
   answers 409 Conflict, and an unknown group answers 404 Not Found. Each throws `StaticDataApiException`: read the
   record again and retry with its new version, or unlink its files first.
+
+Then the 11 UI settings routes, which keep one display setting, such as a screen layout, per owner and setting key:
+
+```csharp
+var screens = await client.CreateSettingGroupAsync("backoffice-web", "Customer screens");
+var layout = await client.CreateSettingAsync("backoffice-web", "customers.list.table", "TableLayout",
+    """{"columns":["name","email"],"sort":"name","pageSize":25}""", groupId: screens.GroupId);
+var saved = await client.GetSettingAsync("backoffice-web", layout.SettingId);
+var updated = await client.UpdateSettingAsync("backoffice-web", saved.SettingId, saved.Version, "TableLayout",
+    """{"columns":["name"],"sort":"name","pageSize":50}""", groupId: screens.GroupId);
+await client.EraseSettingsAsync("backoffice-web");
+```
+
+- The value is raw JSON text. It goes out exactly as you pass it, and `Value` reads back the exact text the service
+  answered. Text that is not one JSON value throws `JsonException` before any request goes out.
+- The setting update replaces the type, group, value and schema version: a `groupId` you leave `null` unlinks the
+  setting, and a `schemaVersion` you leave `null` becomes 1. The group update replaces the name and description.
+- `ListSettingsAsync`, `ListSettingGroupsAsync`, `DeleteSettingAsync`, `GetSettingGroupAsync` and
+  `DeleteSettingGroupAsync` work like their file group counterparts. A group delete while a setting is in it answers
+  409 Conflict.
+- `EraseSettingsAsync` deletes every setting, then every setting group, of the owner.
 
 ## Restore
 

@@ -27,11 +27,17 @@ public sealed class UploadFileHandler(
 
     private const int MaxFileNameLength = 255;
 
+    /// <summary>Check 7, the file name: a required caller text of 1 to 255 characters (spec DRK-2245 §3).</summary>
+    private static readonly InlineValidator<SentName> NameRule = new()
+    {
+        v => v.RuleFor(n => n.Name).CallerText(MaxFileNameLength, required: true)
+    };
+
     #endregion
 
     #region Methods
 
-    /// <param name="fileName">The file name the caller sent; any path in it is removed.</param>
+    /// <param name="fileName">The file name the caller sent; any path in it is removed, then the spaces at both ends.</param>
     /// <param name="content">The buffered upload: read once for the checksum, then again to store it.</param>
     /// <param name="groupId">The file group of this owner to put the new file in, or <see langword="null" /> for none.</param>
     /// <param name="cancellationToken">The call's cancellation token.</param>
@@ -42,9 +48,10 @@ public sealed class UploadFileHandler(
         Guid? groupId = null,
         CancellationToken cancellationToken = default)
     {
-        var name = WithoutPath(fileName);
+        var sentName = WithoutPath(fileName);
+        var name = TextRules.Trim(sentName)!;
         var extension = Path.GetExtension(name).ToLowerInvariant();
-        if (Check(name, extension, content.Length) is { } refusal)
+        if (Check(sentName, extension, content.Length) is { } refusal)
         {
             FileLog.UploadRefused(logger, refusal.Reason, caller.CallerId);
             return Result.Fail<StoredFileDto>(new FileError(refusal.Kind, refusal.Message));
@@ -103,12 +110,16 @@ public sealed class UploadFileHandler(
     /// <summary>The name after its last <c>/</c> or <c>\</c>: a browser may send a full client path.</summary>
     private static string WithoutPath(string fileName) => fileName[(fileName.LastIndexOfAny(['/', '\\']) + 1)..];
 
-    /// <summary>Checks 7 and 8 of the upload, in order; null when the file may be stored.</summary>
-    private (string Reason, FileErrorKind Kind, string Message)? Check(string name, string extension, long size)
+    /// <summary>
+    ///     Checks 7 and 8 of the upload, in order, on the name as sent without its path and the extension of that name
+    ///     trimmed; null when the file may be stored.
+    /// </summary>
+    private (string Reason, FileErrorKind Kind, string Message)? Check(string sentName, string extension, long size)
     {
-        if (name.Length is 0 or > MaxFileNameLength || name.Any(char.IsControl))
+        if (!NameRule.Validate(new SentName(sentName)).IsValid)
         {
-            return ("name", FileErrorKind.Refused, "The file name must be 1 to 255 characters with no control character.");
+            return ("name", FileErrorKind.Refused,
+                "The file name must be 1 to 255 characters, not counting the spaces at both ends, with no control character.");
         }
 
         if (!settings.Value.AllowedExtensions.Contains(extension))
@@ -146,4 +157,6 @@ public sealed class UploadFileHandler(
     }
 
     #endregion
+
+    private sealed record SentName(string? Name);
 }

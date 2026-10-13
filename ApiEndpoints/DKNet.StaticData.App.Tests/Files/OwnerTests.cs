@@ -5,7 +5,8 @@ namespace DKNet.StaticData.App.Tests.Files;
 
 /// <summary>
 /// Spec DRK-2206 §5 "Owner". Every <c>/v1</c> route needs the <c>owner</c> query parameter — 1 to 255 characters, not
-/// only white space, no control characters — kept exactly as sent; a file of another owner does not exist for the call.
+/// only white space, no control characters — trimmed under spec DRK-2245 §3, its case kept; a file of another owner does
+/// not exist for the call.
 /// </summary>
 public sealed class OwnerTests(FilesHost hosts) : IClassFixture<FilesHost>
 {
@@ -44,7 +45,7 @@ public sealed class OwnerTests(FilesHost hosts) : IClassFixture<FilesHost>
         await api.HasFileAsync("Customer-1", "passport.pdf");
 
         (await api.FileNamesAsync("customer-1")).ShouldBeEmpty();
-        // presence sibling: the same list call does find the file under the owner exactly as sent
+        // presence sibling: the same list call does find the file under the owner in its own case
         (await api.FileNamesAsync("Customer-1")).ShouldBe(["passport.pdf"]);
     }
 
