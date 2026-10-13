@@ -32,6 +32,16 @@ public sealed record UiSettingListQuery : IListPageQuery
     #endregion
 }
 
+/// <summary>The setting key filter is an optional caller text of the setting key's length (spec DRK-2245 §3).</summary>
+internal sealed class UiSettingListQueryValidator : AbstractValidator<UiSettingListQuery>
+{
+    #region Constructors
+
+    public UiSettingListQueryValidator() => RuleFor(q => q.SettingKey).CallerText(maxLength: 200, required: false);
+
+    #endregion
+}
+
 /// <summary>
 ///     Lists the owner's settings newest first, one page at a time, each with its value; a setting is in the date range
 ///     when its creation time or its update time is. When both filters are sent, a setting matches both.

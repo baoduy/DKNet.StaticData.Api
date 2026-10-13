@@ -162,6 +162,22 @@ public sealed class SettingListAndRaceTests(FilesHost hosts) : IClassFixture<Fil
             .Select(e => e.GetProperty("field").GetString()).Distinct().ShouldBe(["SettingKey"]);
     }
 
+    /// <summary>The longest setting key filter, 200 characters after trimming, is answered.</summary>
+    [Theory]
+    [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
+    public async Task ASettingKeyFilterOf200CharactersAfterTrimmingIsAnswered(TestDatabase database)
+    {
+        var api = await hosts.OnAsync(database);
+        var settingKey = new string('k', 200);
+        await api.HasSettingAsync("backoffice-web", settingKey);
+
+        using var response = await api.ListSettingsAsync(
+            Callers.ReportSvc, "backoffice-web", $"&settingKey={Uri.EscapeDataString(settingKey + " ")}");
+
+        await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
+        UiSettingsApi.SettingKeys(await response.JsonAsync()).ShouldBe([settingKey]);
+    }
+
     public static IEnumerable<object[]> Pages => Databases.With(
         ["the settings", "&pageNumber=0&pageSize=0"],
         ["the settings", "&pageNumber=-1&pageSize=5000"],
