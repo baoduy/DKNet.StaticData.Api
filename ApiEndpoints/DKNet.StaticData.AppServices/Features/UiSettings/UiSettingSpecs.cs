@@ -12,13 +12,3 @@ internal sealed class UiSettingById : Specification<UiSetting>
 
     #endregion
 }
-
-/// <summary>The settings linked to one setting group.</summary>
-internal sealed class UiSettingsInGroup : Specification<UiSetting>
-{
-    #region Constructors
-
-    public UiSettingsInGroup(Guid groupId) => WithFilter(s => s.GroupId == groupId);
-
-    #endregion
-}

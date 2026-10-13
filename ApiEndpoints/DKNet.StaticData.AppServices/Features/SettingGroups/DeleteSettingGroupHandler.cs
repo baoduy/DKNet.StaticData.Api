@@ -2,14 +2,13 @@ using DKNet.EfCore.Specifications.Extensions;
 using DKNet.EfCore.Specifications.Repositories;
 using DKNet.StaticData.AppServices.Features.FileGroups;
 using DKNet.StaticData.AppServices.Features.Files;
-using DKNet.StaticData.AppServices.Features.UiSettings;
 using Microsoft.EntityFrameworkCore;
 
 namespace DKNet.StaticData.AppServices.Features.SettingGroups;
 
 /// <summary>
-///     Deletes a setting group with no linked setting. The <c>If-Match</c> header is not read (rule R4). A setting saved
-///     into the group between the check and the save makes the database refuse the delete, which answers the same 409.
+///     Deletes a setting group with no linked setting. The <c>If-Match</c> header is not read (rule R4). The database's
+///     foreign key refuses the delete of a group with a linked setting, also one saved into it during this call: 409.
 /// </summary>
 public sealed class DeleteSettingGroupHandler(IRepositorySpec repository)
 {
@@ -27,12 +26,6 @@ public sealed class DeleteSettingGroupHandler(IRepositorySpec repository)
         if (group is null)
         {
             return Result.Fail(new FileError(FileErrorKind.NotFound, SettingGroupAnswers.NotFound));
-        }
-
-        // An existence query, never a load: tracked linked settings would make EF Core refuse the delete itself.
-        if (await repository.AnyAsync(new UiSettingsInGroup(groupId), cancellationToken))
-        {
-            return Result.Fail(new FileError(FileErrorKind.Conflict, HasSettings));
         }
 
         repository.Delete(group);
