@@ -29,7 +29,7 @@ public sealed class CreateSettingGroupTests(FilesHost hosts) : IClassFixture<Fil
         var location = response.Headers.Location.ShouldNotBeNull();
         (location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString)
             .ShouldBe($"/v1/ui-setting-groups/{groupId}?owner=backoffice-web");
-        response.Headers.ETag?.Tag.ShouldBe("\"1\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"1\"");
         group.GetProperty("name").GetString().ShouldBe("Customer screens");
         group.GetProperty("owner").GetString().ShouldBe("backoffice-web");
         group.GetProperty("version").GetInt32().ShouldBe(1);

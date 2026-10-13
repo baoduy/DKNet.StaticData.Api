@@ -56,7 +56,7 @@ public sealed class UpdateSettingGroupTests(FilesHost hosts) : IClassFixture<Fil
             SettingGroupsApi.GroupBody("Client screens"), "\"1\"");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        response.Headers.ETag?.Tag.ShouldBe("\"2\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"2\"");
         var group = await api.SettingGroupAsync("backoffice-web", groupId);
         group.GetProperty("name").GetString().ShouldBe("Client screens");
         group.Has("description").ShouldBeFalse();

@@ -27,7 +27,7 @@ public sealed class UpdateSettingTests(FilesHost hosts) : IClassFixture<FilesHos
             UiSettingsApi.SettingBody(null, "TableLayout", NewValue, schemaVersion: "2"), "\"1\"");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        response.Headers.ETag?.Tag.ShouldBe("\"2\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"2\"");
         var answered = await response.JsonAsync();
         answered.GetProperty("version").GetInt32().ShouldBe(2);
         var setting = await api.SettingAsync("backoffice-web", settingId);
@@ -92,7 +92,7 @@ public sealed class UpdateSettingTests(FilesHost hosts) : IClassFixture<FilesHos
             UiSettingsApi.SettingBody(null, "TableLayout", UiSettingsApi.TableLayout, UiSettingsApi.Id(groupId), "1"), "\"2\"");
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        response.Headers.ETag?.Tag.ShouldBe("\"3\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"3\"");
         (await api.SettingAsync("backoffice-web", settingId)).GetProperty("version").GetInt32().ShouldBe(3);
     }
 

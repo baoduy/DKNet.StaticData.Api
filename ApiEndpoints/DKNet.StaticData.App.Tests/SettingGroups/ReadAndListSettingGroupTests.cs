@@ -38,7 +38,7 @@ public sealed class ReadAndListSettingGroupTests(FilesHost hosts) : IClassFixtur
         using var response = await api.ReadSettingGroupAsync(Callers.ReportSvc, "backoffice-web", groupId);
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        response.Headers.ETag?.Tag.ShouldBe("\"2\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"2\"");
         var group = await response.JsonAsync();
         group.GetProperty("groupId").GetGuid().ShouldBe(groupId);
         group.GetProperty("name").GetString().ShouldBe("Customer screens");

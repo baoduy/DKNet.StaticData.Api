@@ -24,7 +24,7 @@ public sealed class ReadAndListSettingTests(FilesHost hosts) : IClassFixture<Fil
         using var response = await api.ReadSettingAsync(Callers.ReportSvc, "backoffice-web", settingId);
 
         await response.ShouldHaveStatusAsync(HttpStatusCode.OK);
-        response.Headers.ETag?.Tag.ShouldBe("\"2\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"2\"");
         var setting = await response.JsonAsync();
         setting.GetProperty("settingId").GetGuid().ShouldBe(settingId);
         setting.GetProperty("settingKey").GetString().ShouldBe("customers.list.table");

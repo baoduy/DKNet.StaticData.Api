@@ -33,7 +33,7 @@ public sealed class CreateSettingTests(FilesHost hosts) : IClassFixture<FilesHos
         var location = response.Headers.Location.ShouldNotBeNull();
         (location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString)
             .ShouldBe($"/v1/ui-settings/{settingId}?owner=backoffice-web");
-        response.Headers.ETag?.Tag.ShouldBe("\"1\"");
+        response.Headers.ETag.ShouldNotBeNull("the answer carries no ETag").Tag.ShouldBe("\"1\"");
         setting.GetProperty("settingKey").GetString().ShouldBe("customers.list.table");
         setting.GetProperty("settingType").GetString().ShouldBe("TableLayout");
         setting.GetProperty("owner").GetString().ShouldBe("backoffice-web");
