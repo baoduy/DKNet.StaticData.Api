@@ -1,6 +1,7 @@
 using DKNet.StaticData.App.Tests.FileGroups.Support;
 using DKNet.StaticData.App.Tests.Files.Support;
 using DKNet.StaticData.App.TestSupport;
+using Microsoft.Extensions.Logging;
 
 namespace DKNet.StaticData.App.Tests.Integration.TextRules;
 
@@ -27,6 +28,31 @@ public sealed class FileTextRuleTests(FilesHost hosts) : IClassFixture<FilesHost
         (location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString)
             .ShouldBe($"/v1/files/{file.GetProperty("fileId").GetGuid()}?owner=customer-1");
         (await api.FileNamesAsync("customer-1")).ShouldBe(["passport.pdf"]);
+    }
+
+    /// <summary>§3 row 7 and §6 R5: a refused name keeps its <c>UploadRefused("name")</c> entry, with no owner or name.</summary>
+    [Theory]
+    [MemberData(nameof(Databases.Both), MemberType = typeof(Databases))]
+    public async Task AnUploadNameWithAControlCharacterAsSentIsRefusedAndLoggedByItsReasonOnly(TestDatabase database)
+    {
+        var api = await hosts.OnAsync(database);
+
+        using var response = await api.UploadAsync(Callers.OnboardingSvc, "customer-1", "passport.pdf\t", Bytes.Of(1024), FilesApi.NewKey());
+
+        await response.ShouldBeProblemDetailsAsync(HttpStatusCode.BadRequest);
+        (await response.JsonAsync()).GetProperty("detail").GetString().ShouldBe(
+            "The file name must be 1 to 255 characters, not counting the spaces at both ends, with no control character.");
+        var entries = api.Host.LogCapture.Entries;
+        var entry = entries
+            .Where(e => e.Level == LogLevel.Information && e.Message.StartsWith("Upload refused", StringComparison.Ordinal))
+            .ShouldHaveSingleItem();
+        entry.Names("name").ShouldBeTrue($"\"{entry.Message}\" does not name the reason \"name\"");
+        foreach (var personal in new[] { "customer-1", "passport.pdf" })
+        {
+            entries.ShouldNotContain(e => e.Holds(personal), $"a log entry holds \"{personal}\"");
+        }
+
+        (await api.FileNamesAsync("customer-1")).ShouldBeEmpty();
     }
 
     [Theory]
