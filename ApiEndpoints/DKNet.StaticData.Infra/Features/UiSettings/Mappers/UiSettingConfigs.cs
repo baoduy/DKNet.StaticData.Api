@@ -28,8 +28,8 @@ internal sealed class UiSettingConfigs : DefaultEntityTypeConfiguration<UiSettin
 
         builder.Property(s => s.Version).IsConcurrencyToken();
 
-        // A group with a linked setting is never deleted: the database refuses it, never cascades.
-        builder.HasIndex(s => s.GroupId);
+        // A group with a linked setting is never deleted: the database refuses it, never cascades. EF Core indexes the
+        // foreign key (IX_UiSettings_GroupId) by convention.
         builder.HasOne<SettingGroup>().WithMany().HasForeignKey(s => s.GroupId).OnDelete(DeleteBehavior.Restrict);
 
         builder.ToTable("UiSettings", DomainSchemas.Settings);
