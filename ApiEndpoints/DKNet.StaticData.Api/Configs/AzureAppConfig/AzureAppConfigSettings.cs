@@ -36,5 +36,11 @@ internal sealed record AzureAppConfigSettings(
                 : DefaultCacheExpirationInSeconds));
     }
 
+    /// <summary>
+    ///     Whether a setting read from the store is kept.
+    /// </summary>
+    [SuppressMessage("Performance", "CA1822", Justification = "Reproduction stub; the fix reads instance data.")]
+    public bool ShouldLoadSetting(string key) => true;
+
     #endregion
 }
