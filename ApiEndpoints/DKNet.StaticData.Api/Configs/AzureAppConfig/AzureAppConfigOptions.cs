@@ -9,29 +9,29 @@ internal sealed class AzureAppConfigOptions
     #region Properties
 
     /// <summary>
-    ///     Whether to load feature flags from Azure App Configuration
+    ///     Whether to load feature flags from Azure App Configuration; null loads them
     /// </summary>
-    public bool LoadFeatureFlags { get; set; } = true;
+    public bool? LoadFeatureFlags { get; set; } = true;
 
     /// <summary>
-    ///     Cache expiration time for configuration values in Minutes
+    ///     Refresh interval for configuration values in seconds
     /// </summary>
-    public int RefreshIntervalInMinutes { get; set; } = 300;
+    public int CacheExpirationInSeconds { get; set; } = 300;
 
     /// <summary>
     ///     Connection string for Azure App Configuration
     /// </summary>
-    public string ConnectionStringName { get; set; } = Name;
+    public string ConnectionStringName { get; set; } = "AzureAppConfig";
 
     /// <summary>
     ///     Feature flag prefix to filter feature flags (optional)
     /// </summary>
-    public string FeatureFlagPrefix { get; set; } = string.Empty;
+    public string? FeatureFlagPrefix { get; set; }
 
     /// <summary>
     ///     Configuration section name
     /// </summary>
-    public static string Name => "AzureAppConfig";
+    public static string Name => "AzureAppConfiguration";
 
     /// <summary>
     ///     Label to filter configuration values (optional)

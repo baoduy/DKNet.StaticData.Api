@@ -24,9 +24,8 @@ internal static class AzureAppConfigSetup
             return builder;
         }
 
-        var options = builder.Configuration.GetSection(AzureAppConfigOptions.Name).Get<AzureAppConfigOptions>() ??
-                      new AzureAppConfigOptions();
-        var conn = builder.Configuration.GetConnectionString(options.ConnectionStringName);
+        var settings = AzureAppConfigSettings.Resolve(builder.Configuration);
+        var conn = builder.Configuration.GetConnectionString(settings.ConnectionStringName);
         if (string.IsNullOrWhiteSpace(conn))
         {
             return builder;
@@ -35,11 +34,21 @@ internal static class AzureAppConfigSetup
         builder.Configuration.AddAzureAppConfiguration(op =>
         {
             op.Connect(new Uri(conn), new DefaultAzureCredential())
-                .UseFeatureFlags()
-                .ConfigureRefresh(c => c.RegisterAll().SetRefreshInterval(TimeSpan.FromMinutes(30)));
+                .ConfigureRefresh(c => c.RegisterAll().SetRefreshInterval(settings.RefreshInterval));
 
-            var label = options.Label ?? SharedConsts.ApiName;
-            op.Select(KeyFilter.Any, label);
+            if (settings.LoadFeatureFlags)
+            {
+                if (string.IsNullOrEmpty(settings.FeatureFlagPrefix))
+                {
+                    op.UseFeatureFlags();
+                }
+                else
+                {
+                    op.UseFeatureFlags(ff => ff.Select(settings.FeatureFlagPrefix + "*"));
+                }
+            }
+
+            op.Select(KeyFilter.Any, settings.Label);
         });
 
         builder.Services.MarkConfigAdded(nameof(AzureAppConfigSetup));
