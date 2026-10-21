@@ -49,6 +49,8 @@ internal static class AzureAppConfigSetup
             }
 
             op.Select(KeyFilter.Any, settings.Label);
+            // The label selector also fetches the feature flags carrying the label; drop those the flag settings exclude.
+            op.Map(setting => ValueTask.FromResult(settings.ShouldLoadSetting(setting.Key) ? setting : null));
         });
 
         builder.Services.MarkConfigAdded(nameof(AzureAppConfigSetup));

@@ -1,3 +1,5 @@
+using Azure.Data.AppConfiguration;
+
 namespace DKNet.StaticData.Api.Configs.AzureAppConfig;
 
 /// <summary>
@@ -37,10 +39,22 @@ internal sealed record AzureAppConfigSettings(
     }
 
     /// <summary>
-    ///     Whether a setting read from the store is kept.
+    ///     Whether a setting read from the store is kept. A plain key is always kept; a feature flag key is kept only
+    ///     when <see cref="LoadFeatureFlags" /> is on and, when <see cref="FeatureFlagPrefix" /> is set, its name (the
+    ///     text after the feature flag key prefix) starts with that prefix, case-sensitive — the same rule the flag
+    ///     selector applies, so flags the label selector also fetches are filtered alike.
     /// </summary>
-    [SuppressMessage("Performance", "CA1822", Justification = "Reproduction stub; the fix reads instance data.")]
-    public bool ShouldLoadSetting(string key) => true;
+    public bool ShouldLoadSetting(string key)
+    {
+        if (!key.StartsWith(FeatureFlagConfigurationSetting.KeyPrefix, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return LoadFeatureFlags && (string.IsNullOrEmpty(FeatureFlagPrefix) ||
+                                    key.AsSpan(FeatureFlagConfigurationSetting.KeyPrefix.Length)
+                                        .StartsWith(FeatureFlagPrefix, StringComparison.Ordinal));
+    }
 
     #endregion
 }
