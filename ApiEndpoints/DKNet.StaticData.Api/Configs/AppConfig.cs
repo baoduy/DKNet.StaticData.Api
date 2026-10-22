@@ -17,11 +17,6 @@ internal static class AppConfig
         IConfiguration configuration,
         DatabaseProvider database)
     {
-        if (features.EnableAntiforgery)
-        {
-            services.AddAntiforgeryConfig();
-        }
-
         if (features.RequireAuthorization && features.EnableDemoAuthentication)
         {
             throw new InvalidOperationException(
@@ -43,32 +38,13 @@ internal static class AppConfig
             services.AddOpenApiDoc();
         }
 
-        if (features.EnableHttps)
-        {
-            services.AddHttpsConfig(configuration);
-        }
-
-        if (features.EnableRateLimit)
-        {
-            services.AddRateLimitConfig(configuration);
-        }
-
         if (features.EnableVersioning)
         {
             services.AddAppVersioning();
         }
 
-        if (features.EnableForwardedHeaders)
-        {
-            services.AddForwardedHeadersConfig(configuration);
-        }
-
-        services.AddSecurityHeadersConfig(features);
-
-        if (features.EnableRequestBounds)
-        {
-            services.AddRequestBoundsConfig(configuration);
-        }
+        services.AddFlaggedHostingConfig(features, configuration)
+            .AddSecurityHeadersConfig(features);
 
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
@@ -80,6 +56,44 @@ internal static class AppConfig
             .AddCorsConfig(configuration)
             .AddAllAppServices(database)
             .AddHealthzConfig(features);
+    }
+
+    /// <summary>
+    ///     Registers each DKNet hosting item whose <see cref="FeatureOptions" /> flag is on: antiforgery, HTTPS,
+    ///     rate limiting, forwarded headers and request bounds. An item whose flag is off is not registered, so its
+    ///     <c>Use*Config</c> step changes nothing.
+    /// </summary>
+    private static IServiceCollection AddFlaggedHostingConfig(
+        this IServiceCollection services,
+        FeatureOptions features,
+        IConfiguration configuration)
+    {
+        if (features.EnableAntiforgery)
+        {
+            services.AddAntiforgeryConfig();
+        }
+
+        if (features.EnableHttps)
+        {
+            services.AddHttpsConfig(configuration);
+        }
+
+        if (features.EnableRateLimit)
+        {
+            services.AddRateLimitConfig(configuration);
+        }
+
+        if (features.EnableForwardedHeaders)
+        {
+            services.AddForwardedHeadersConfig(configuration);
+        }
+
+        if (features.EnableRequestBounds)
+        {
+            services.AddRequestBoundsConfig(configuration);
+        }
+
+        return services;
     }
 
     public static Task UseAppConfig(this WebApplication app, Action<WebApplication>? extra = null)
