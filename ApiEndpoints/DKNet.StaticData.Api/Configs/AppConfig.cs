@@ -1,6 +1,7 @@
 ﻿using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
-using DKNet.StaticData.Api.Configs.RateLimits;
+using DKNet.AspCore.Extensions.Antiforgery;
+using DKNet.AspCore.Extensions.RateLimits;
 using DKNet.StaticData.Api.Configs.Swagger;
 
 namespace DKNet.StaticData.Api.Configs;
@@ -57,9 +58,17 @@ internal static class AppConfig
             services.AddAppVersioning();
         }
 
-        services.AddForwardedHeadersConfig(features, configuration)
-            .AddSecurityHeadersConfig(features)
-            .AddRequestBoundsConfig(features, configuration);
+        if (features.EnableForwardedHeaders)
+        {
+            services.AddForwardedHeadersConfig(configuration);
+        }
+
+        services.AddSecurityHeadersConfig(features);
+
+        if (features.EnableRequestBounds)
+        {
+            services.AddRequestBoundsConfig(configuration);
+        }
 
         services.AddHttpContextAccessor()
             .AddFeatureManagement();
@@ -68,7 +77,7 @@ internal static class AppConfig
             .AddFileStorage(configuration);
 
         return services
-            .AddCrosConfig(configuration)
+            .AddCorsConfig(configuration)
             .AddAllAppServices(database)
             .AddHealthzConfig(features);
     }
@@ -81,8 +90,7 @@ internal static class AppConfig
         app.UseAzureAppConfig()
             .UseForwardedHeadersConfig()
             .UseSecurityHeadersConfig()
-            .UseAntiforgeryConfig()
-            .UseCrosConfig()
+            .UseCorsConfig()
             .UseHttpsConfig()
             .UseHealthzConfig();
 
@@ -90,7 +98,13 @@ internal static class AppConfig
         // service does not serve, the request timeout's 504 — still answers as problem details (spec DRK-2206 §3).
         app.UseStatusCodePages();
         app.UseRouting();
+
+        // After UseRouting, so the antiforgery guard can see whether the endpoint turns the check off.
+        app.UseAntiforgeryConfig();
         app.UseRequestBoundsConfig();
+
+        // Before authentication on purpose (spec DRK-2366 R2): a caller is limited by client address, so moving it
+        // after UseAuthConfig would change who shares a bucket.
         app.UseRateLimitConfig();
 
         //This must be after UseRouting

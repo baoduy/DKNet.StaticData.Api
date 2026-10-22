@@ -30,7 +30,7 @@ internal static class HealthzConfig
         // exception, so the detail report would show no failure text; this one lets it surface.
         services.AddHealthChecks()
             .AddDbContextCheck<CoreDbContext>(customTestQuery: PingDatabaseAsync);
-        services.MarkConfigAdded(nameof(HealthzConfig));
+        services.MarkFeatureAdded(nameof(HealthzConfig));
         return services;
     }
 
@@ -41,7 +41,7 @@ internal static class HealthzConfig
     /// <returns></returns>
     public static WebApplication UseHealthzConfig(this WebApplication endpoints)
     {
-        if (!endpoints.Services.IsConfigAdded(nameof(HealthzConfig)))
+        if (!endpoints.Services.IsFeatureAdded(nameof(HealthzConfig)))
         {
             return endpoints;
         }
