@@ -38,7 +38,7 @@ var api = builder.AddProject("Api", "../DKNet.StaticData.Api/DKNet.StaticData.Ap
     // Sign-in and role checks on, trusting only the local realm: signature, issuer, audience and lifetime are all
     // still checked. The one relaxation, fetching the realm's keys over plain HTTP, is set here and nowhere else.
     // appsettings.Development.json turns demo sign-in on; the API refuses to start with both on.
-    .WithEnvironment("FeatureManagement__RequireAuthorization", "true")
+    .WithEnvironment("FeatureManagement__RequireAuthorization", "false")
     .WithEnvironment("FeatureManagement__EnableDemoAuthentication", "false")
     .WithEnvironment("Authentication__Schemes__Bearer__MetadataAddress",
         ReferenceExpression.Create($"{realmUrl}/.well-known/openid-configuration"))

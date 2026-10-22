@@ -1,5 +1,6 @@
 using DKNet.StaticData.Api.Configs;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
+using DKNet.AspCore.Extensions.Jobs;
 using DKNet.StaticData.Api.Configs.Jobs;
 using DKNet.StaticData.Api.ApiEndpoints.Files;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -31,7 +32,7 @@ if (jobSelection.HasJobName)
         return 1;
     }
 
-    return await JobRegistry.Jobs[jobSelection.RequestedJobName!](builder);
+    return await JobRegistry.Jobs[jobSelection.JobName!](builder);
 }
 
 builder.AddFluentValidationConfig();

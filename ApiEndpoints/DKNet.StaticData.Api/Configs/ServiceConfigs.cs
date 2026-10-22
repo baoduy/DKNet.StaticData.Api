@@ -1,3 +1,4 @@
+﻿using DKNet.AspCore.Extensions.Security;
 using DKNet.EfCore.Extensions.Serialization;
 using DKNet.StaticData.Infra.Contexts;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
@@ -14,8 +15,7 @@ internal static class ServiceConfigs
         DatabaseProvider database)
     {
         services
-            .AddSingleton<IHttpContextAccessor, HttpContextAccessor>()
-            .AddSingleton<ISensitiveDataPrincipalAccessor, HttpContextSensitiveDataPrincipalAccessor>()
+            .AddSensitiveDataPrincipalAccessor()
             .AddScoped<IPrincipalProvider, PrincipalProvider>()
             .AddScoped<ICallerAccessor, CallerAccessor>()
             // Also wires DKNet's DataOwnerHook onto CoreDbContext: it stamps CreatedBy/CreatedOn from

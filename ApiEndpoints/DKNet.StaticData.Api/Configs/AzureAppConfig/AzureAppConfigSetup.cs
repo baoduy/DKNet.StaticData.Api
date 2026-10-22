@@ -24,9 +24,8 @@ internal static class AzureAppConfigSetup
             return builder;
         }
 
-        var options = builder.Configuration.GetSection(AzureAppConfigOptions.Name).Get<AzureAppConfigOptions>() ??
-                      new AzureAppConfigOptions();
-        var conn = builder.Configuration.GetConnectionString(options.ConnectionStringName);
+        var settings = AzureAppConfigSettings.Resolve(builder.Configuration);
+        var conn = builder.Configuration.GetConnectionString(settings.ConnectionStringName);
         if (string.IsNullOrWhiteSpace(conn))
         {
             return builder;
@@ -35,14 +34,26 @@ internal static class AzureAppConfigSetup
         builder.Configuration.AddAzureAppConfiguration(op =>
         {
             op.Connect(new Uri(conn), new DefaultAzureCredential())
-                .UseFeatureFlags()
-                .ConfigureRefresh(c => c.RegisterAll().SetRefreshInterval(TimeSpan.FromMinutes(30)));
+                .ConfigureRefresh(c => c.RegisterAll().SetRefreshInterval(settings.RefreshInterval));
 
-            var label = options.Label ?? SharedConsts.ApiName;
-            op.Select(KeyFilter.Any, label);
+            if (settings.LoadFeatureFlags)
+            {
+                if (string.IsNullOrEmpty(settings.FeatureFlagPrefix))
+                {
+                    op.UseFeatureFlags();
+                }
+                else
+                {
+                    op.UseFeatureFlags(ff => ff.Select(settings.FeatureFlagPrefix + "*"));
+                }
+            }
+
+            op.Select(KeyFilter.Any, settings.Label);
+            // The label selector also fetches the feature flags carrying the label; drop those the flag settings exclude.
+            op.Map(setting => ValueTask.FromResult(settings.ShouldLoadSetting(setting.Key) ? setting : null));
         });
 
-        builder.Services.MarkConfigAdded(nameof(AzureAppConfigSetup));
+        builder.Services.MarkFeatureAdded(nameof(AzureAppConfigSetup));
 
         return builder;
     }
@@ -54,7 +65,7 @@ internal static class AzureAppConfigSetup
     /// </summary>
     public static WebApplication UseAzureAppConfig(this WebApplication app)
     {
-        if (app.Services.IsConfigAdded(nameof(AzureAppConfigSetup)))
+        if (app.Services.IsFeatureAdded(nameof(AzureAppConfigSetup)))
         {
             app.Logger.LogInformation("{Feature} enabled", nameof(AzureAppConfigSetup));
         }

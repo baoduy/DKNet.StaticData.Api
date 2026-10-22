@@ -52,7 +52,7 @@ internal static class DemoAuthConfig
     /// </summary>
     public static IServiceCollection AddDemoAuthConfig(this IServiceCollection services)
     {
-        services.MarkConfigAdded(nameof(DemoAuthConfig));
+        services.MarkFeatureAdded(nameof(DemoAuthConfig));
 
         services.AddAuthentication(DemoAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(
