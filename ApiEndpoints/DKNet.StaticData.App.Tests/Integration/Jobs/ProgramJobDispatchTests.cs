@@ -13,8 +13,11 @@ public class ProgramJobDispatchTests
 {
     private static readonly TimeSpan RunTimeout = TimeSpan.FromSeconds(60);
 
-    [Fact]
-    public async Task UnknownJob_ReturnsOne_AndNamesTheKnownJobs()
+    /// <summary>Spec DRK-2366 §5 Scenario Outline: A service that runs jobs still refuses an unknown job — row "cleanup".</summary>
+    [Theory]
+    [InlineData("nope")]
+    [InlineData("cleanup")]
+    public async Task UnknownJob_ReturnsOne_AndNamesTheKnownJobs(string job)
     {
         var stderr = new StringWriter();
         var previous = Console.Error;
@@ -22,7 +25,7 @@ public class ProgramJobDispatchTests
         int exitCode;
         try
         {
-            exitCode = await RunEntryPointAsync("nope");
+            exitCode = await RunEntryPointAsync(job);
         }
         finally
         {
@@ -30,7 +33,7 @@ public class ProgramJobDispatchTests
         }
 
         exitCode.ShouldBe(1);
-        stderr.ToString().ShouldBe($"Unrecognized job \"nope\". Known jobs: migration{Environment.NewLine}");
+        stderr.ToString().ShouldBe($"Unrecognized job \"{job}\". Known jobs: migration{Environment.NewLine}");
     }
 
     [Fact]

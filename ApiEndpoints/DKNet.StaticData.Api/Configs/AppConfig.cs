@@ -1,6 +1,7 @@
 ﻿using DKNet.StaticData.Api.Configs.Auth;
 using DKNet.StaticData.Api.Configs.AzureAppConfig;
-using DKNet.StaticData.Api.Configs.RateLimits;
+using DKNet.AspCore.Extensions.Antiforgery;
+using DKNet.AspCore.Extensions.RateLimits;
 using DKNet.StaticData.Api.Configs.Swagger;
 
 namespace DKNet.StaticData.Api.Configs;
@@ -16,11 +17,6 @@ internal static class AppConfig
         IConfiguration configuration,
         DatabaseProvider database)
     {
-        if (features.EnableAntiforgery)
-        {
-            services.AddAntiforgeryConfig();
-        }
-
         if (features.RequireAuthorization && features.EnableDemoAuthentication)
         {
             throw new InvalidOperationException(
@@ -42,6 +38,41 @@ internal static class AppConfig
             services.AddOpenApiDoc();
         }
 
+        if (features.EnableVersioning)
+        {
+            services.AddAppVersioning();
+        }
+
+        services.AddFlaggedHostingConfig(features, configuration)
+            .AddSecurityHeadersConfig(features);
+
+        services.AddHttpContextAccessor()
+            .AddFeatureManagement();
+
+        services.AddIdempotencyConfig(configuration, database)
+            .AddFileStorage(configuration);
+
+        return services
+            .AddCorsConfig(configuration)
+            .AddAllAppServices(database)
+            .AddHealthzConfig(features);
+    }
+
+    /// <summary>
+    ///     Registers each DKNet hosting item whose <see cref="FeatureOptions" /> flag is on: antiforgery, HTTPS,
+    ///     rate limiting, forwarded headers and request bounds. An item whose flag is off is not registered, so its
+    ///     <c>Use*Config</c> step changes nothing.
+    /// </summary>
+    private static IServiceCollection AddFlaggedHostingConfig(
+        this IServiceCollection services,
+        FeatureOptions features,
+        IConfiguration configuration)
+    {
+        if (features.EnableAntiforgery)
+        {
+            services.AddAntiforgeryConfig();
+        }
+
         if (features.EnableHttps)
         {
             services.AddHttpsConfig(configuration);
@@ -52,25 +83,17 @@ internal static class AppConfig
             services.AddRateLimitConfig(configuration);
         }
 
-        if (features.EnableVersioning)
+        if (features.EnableForwardedHeaders)
         {
-            services.AddAppVersioning();
+            services.AddForwardedHeadersConfig(configuration);
         }
 
-        services.AddForwardedHeadersConfig(features, configuration)
-            .AddSecurityHeadersConfig(features)
-            .AddRequestBoundsConfig(features, configuration);
+        if (features.EnableRequestBounds)
+        {
+            services.AddRequestBoundsConfig(configuration);
+        }
 
-        services.AddHttpContextAccessor()
-            .AddFeatureManagement();
-
-        services.AddIdempotencyConfig(configuration, database)
-            .AddFileStorage(configuration);
-
-        return services
-            .AddCrosConfig(configuration)
-            .AddAllAppServices(database)
-            .AddHealthzConfig(features);
+        return services;
     }
 
     public static Task UseAppConfig(this WebApplication app, Action<WebApplication>? extra = null)
@@ -81,8 +104,7 @@ internal static class AppConfig
         app.UseAzureAppConfig()
             .UseForwardedHeadersConfig()
             .UseSecurityHeadersConfig()
-            .UseAntiforgeryConfig()
-            .UseCrosConfig()
+            .UseCorsConfig()
             .UseHttpsConfig()
             .UseHealthzConfig();
 
@@ -90,7 +112,13 @@ internal static class AppConfig
         // service does not serve, the request timeout's 504 — still answers as problem details (spec DRK-2206 §3).
         app.UseStatusCodePages();
         app.UseRouting();
+
+        // After UseRouting, so the antiforgery guard can see whether the endpoint turns the check off.
+        app.UseAntiforgeryConfig();
         app.UseRequestBoundsConfig();
+
+        // Before authentication on purpose (spec DRK-2366 R2): a caller is limited by client address, so moving it
+        // after UseAuthConfig would change who shares a bucket.
         app.UseRateLimitConfig();
 
         //This must be after UseRouting
