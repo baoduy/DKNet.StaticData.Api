@@ -99,7 +99,7 @@ The foreign key from `StoredFile.GroupId` refuses a group delete while a file is
 
 | Setting | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `Files:AllowedExtensions` | list of strings | Yes | `.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.txt`, `.csv`, `.json`, `.xml`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.zip` | Lowercase, each with its dot. An empty list stops the host at start (ADR-0007). |
+| `Files:AllowedExtensions` | list of strings | Yes | `.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.doc`, `.docx`, `.xls`, `.xlsx` | Lowercase, each with its dot. Only these 9 types have a content rule (03-integration, Content rules), so a deployment may list fewer of them, never another one. Any other extension stops the host at start, and the start error names that extension; the match ignores case. An empty list stops the host at start (ADR-0022). |
 | `BlobStorage:Provider` | string | Yes | `Local` | `Local`, `AzureStorage` or `AwsS3`. Any other value stops the host at start. |
 | `BlobStorage:LocalFolder:RootFolder` | string | With `Local` | — | The package's local provider setting. |
 | `BlobService:AzureStorage:ConnectionString`, `:ContainerName` | string | With `AzureStorage` | — | The package's Azure settings. The connection string is a secret. |

@@ -9,7 +9,7 @@ DKNet StaticData stores files and UI display settings for other backend services
 | **Bounded context** | Static Data |
 | **Stack** | .NET 10 / ASP.NET Core minimal API with DKNet packages, scaffolded from DKNet.Templates (`dknet-minimal`), EF Core on Postgres or SQL Server, Aspire AppHost for local runs |
 | **Status** | Active |
-| **Design revision** | 5 |
+| **Design revision** | 6 |
 | **Owner** | drunkcoding |
 | **Root ticket** | DRK-2184 |
 
@@ -27,7 +27,7 @@ DKNet StaticData stores files and UI display settings for other backend services
   - [ADR-0004](adr/0004-stream-bytes-through-the-api.md) — Upload and download stream through the API; no download links.
   - [ADR-0005](adr/0005-owner-query-parameter-and-owner-filter.md) — The owner travels as the `owner` query parameter and is enforced by DKNet.EfCore.DataAuthorization.
   - [ADR-0006](adr/0006-caller-authorization-scope-or-app-role.md) — Authorize callers by scope or app role, 4 permissions. Superseded by ADR-0013.
-  - [ADR-0007](adr/0007-file-type-allow-list.md) — Accept only file extensions on a configured allow-list. Proposed answer to open question 1.
+  - [ADR-0007](adr/0007-file-type-allow-list.md) — Accept only file extensions on a configured allow-list. Superseded by ADR-0022.
   - [ADR-0008](adr/0008-hard-delete.md) — Deleting a file removes its metadata and its bytes. Proposed answer to open question 2.
   - [ADR-0009](adr/0009-no-per-download-record.md) — No per-download audit record; one log entry per download. Proposed answer to open question 3.
   - [ADR-0010](adr/0010-app-managed-version-and-if-match.md) — An app-managed `Version` number guards updates, through `ETag` and `If-Match`.
@@ -42,6 +42,7 @@ DKNet StaticData stores files and UI display settings for other backend services
   - [ADR-0019](adr/0019-display-text-character-rule.md) — Display texts allow only letters, digits, spaces, `-` and `_`.
   - [ADR-0020](adr/0020-owner-names-the-app.md) — The owner names the app; UI settings and setting groups have no app key.
   - [ADR-0021](adr/0021-erase-an-owners-ui-settings.md) — `DELETE /v1/ui-settings/all` erases all UI settings and setting groups of an owner.
+  - [ADR-0022](adr/0022-check-file-content-on-upload.md) — Each upload's first bytes must match its extension; only the 9 types with a content rule can be allowed.
 - [diagrams/](diagrams/) — archify IR (`.json`) and render (`.svg`) for every diagram.
 
 ## Runtime architecture
@@ -56,3 +57,8 @@ Each slice is one future Workflow B ticket, delivered in this order. The request
 2. **Files** — caller authentication and authorization: a valid token for this API with the caller id claim, then the app role check on every `/v1` route: `staticdata.read` for `GET`, `staticdata.write` for `POST` and `DELETE`, and 403 without it. Keycloak joins the AppHost: its realm defines both roles, maps them into the `roles` claim, gives its caller client both, and defines no scopes for this service. Then the `owner` query parameter and the owner filter, the `StoredFile` aggregate with the exact-comparison rule for its owner column (ADR-0018; every later slice applies it to its own columns), upload, metadata, list, download and delete, the extension allow-list, the 50,000,000-byte limit and its per-route request bounds, the 3 blob providers and their settings, idempotency on upload with the hourly sweep of expired idempotency rows, and the file log entries. The typed client package `DKNet.StaticData.Client` starts here with the file routes; devops adds its pack and push to GitHub Packages in the publish workflow on `main`. Realises: 02 StoredFile, 03 Files routes, Typed client and Flows 1 to 3, 04 StoredFile and FileSettings, 05 Security, Observability (Logs) and Packaging (client package), ADR-0003 to ADR-0005, ADR-0007 to ADR-0009, ADR-0011, ADR-0012, ADR-0014, ADR-0016.
 3. **File groups** — the `FileGroup` aggregate with create, read, list, update and delete, the delete refusal while a file is linked, `groupId` on upload, link and unlink of a file, listing files by group, `Version` with `ETag` and `If-Match`, idempotency on group create, and the file group routes in the client package. Each new route checks its app role (ADR-0016). Realises: 02 FileGroup, 03 File group routes, Typed client and Flow 4, 04 FileGroup, ADR-0010, ADR-0012, ADR-0014, ADR-0016.
 4. **UI settings** — the `UiSetting` and `SettingGroup` aggregates with their routes, the one-setting-per-owner-and-screen rule, the 65,536-byte JSON value check, the setting group delete refusal, the setting list filters, the erase route `DELETE /v1/ui-settings/all`, and the 11 UI settings calls in the client package. Each new route checks its app role (ADR-0016). It also changes the merged routes of slices 2 and 3: the text rules trim the owner on every route, the file name at upload, and the file group name, purpose, external reference and list filters (ADR-0018); the file group name follows the display text rule (ADR-0019). Realises: 01 Responsibilities, 02 UiSetting and SettingGroup, 03 Text rules, UI settings routes, Typed client and Flows 5 and 6, 04 UiSetting and SettingGroup and Retention, ADR-0010, ADR-0014, ADR-0016, ADR-0018 to ADR-0021.
+5. **Content check** — the content check on upload (check 9) with its content rules, the new default of `Files:AllowedExtensions`, the start-up refusal of any extension without a content rule, and the reason `content` in the "Upload refused" log entry. Files already stored are not touched. Realises: 01 Responsibilities, 02 StoredFile, 03 `POST /v1/files` and Flow 1, 04 FileSettings, 05 Content safety, Observability (Logs) and Testing approach, ADR-0022.
+
+## Change log
+
+- Revision 6 (DRK-2614) — the upload checks each file's first bytes against its extension, and only the 9 types with a content rule can be allowed (ADR-0022, supersedes ADR-0007).

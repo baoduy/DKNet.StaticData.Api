@@ -288,7 +288,7 @@
       "dot": "emerald",
       "title": "Files",
       "items": [
-        "Max 50,000,000 bytes per file; extension allow-list",
+        "Max 50,000,000 bytes per file; 9 types, first bytes checked",
         "Bytes stream to and from storage; no download links",
         "X-Idempotency-Key on POST /v1/files and /v1/file-groups"
       ]

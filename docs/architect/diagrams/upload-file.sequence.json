@@ -47,7 +47,7 @@
     {
       "from": 154,
       "to": 274,
-      "label": "Checks 1 to 9: token, role, owner, key, form, name, size"
+      "label": "Checks 1 to 10: token, role, owner, key, form, name, size, content"
     },
     {
       "from": 280,
