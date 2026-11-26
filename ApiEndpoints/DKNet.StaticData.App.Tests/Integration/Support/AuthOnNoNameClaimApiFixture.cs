@@ -31,13 +31,11 @@ public sealed class AuthOnNoNameClaimApiFixture : TestApiFactoryBase, IAsyncLife
         NoNameClaimAuthHandler.Register(services);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _ = CreateClient();
         await ResetDatabaseAsync();
     }
-
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 
     protected override void Dispose(bool disposing)
     {

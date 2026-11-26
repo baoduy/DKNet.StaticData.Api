@@ -31,7 +31,11 @@ var realmUrl = ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realm
 // substitution as text — unlike AddProject<DKNet.StaticData_Api>, whose generated Projects.* identifier
 // (derived from the .csproj file name with '.'/'-' replaced by '_') can disagree with the
 // template engine's own text substitution for a name containing a dot (e.g. "DKNet.Accounts").
+// Aspire 17 marks AddProject obsolete in favour of AddDotnetProject from Aspire.Hosting.Dotnet, a package
+// DRK-2618 does not add; the call still starts the project as before.
+#pragma warning disable CS0618
 var api = builder.AddProject("Api", "../DKNet.StaticData.Api/DKNet.StaticData.Api.csproj")
+#pragma warning restore CS0618
     .WithReference(apDb, "AppDb")
     .WithEnvironment("BlobStorage__Provider", "Local")
     .WithEnvironment("BlobStorage__LocalFolder__RootFolder", blobFolder)

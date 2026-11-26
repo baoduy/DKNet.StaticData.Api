@@ -71,32 +71,27 @@ internal static class SecurityHeadersConfig
     private static SecureHeadersMiddlewareConfiguration StrictConfig() =>
         BaseConfig().UseDefaultContentSecurityPolicy().Build();
 
-    private static SecureHeadersMiddlewareConfiguration DocsConfig()
-    {
-        var config = BaseConfig().UseContentSecurityPolicy();
-
-        // Mirrors UseDefaultContentSecurityPolicy()'s script-src/object-src 'self', with 'unsafe-inline'
-        // added to script-src for Scalar's inline bootstrap.
-        config.ContentSecurityPolicyConfiguration.ScriptSrc =
-        [
-            ContentSecurityPolicyHelpers.CreateSelfDirective(),
-            new ContentSecurityPolicyElement
-            {
-                CommandType = CspCommandType.Directive,
-                DirectiveOrUri = "unsafe-inline"
-            }
-        ];
-        config.ContentSecurityPolicyConfiguration.ObjectSrc =
-            [ContentSecurityPolicyHelpers.CreateSelfDirective()];
-
-        return config.Build();
-    }
+    // Mirrors UseDefaultContentSecurityPolicy()'s script-src/object-src 'self', with 'unsafe-inline'
+    // added to script-src for Scalar's inline bootstrap.
+    private static SecureHeadersMiddlewareConfiguration DocsConfig() =>
+        BaseConfig()
+            .UseContentSecurityPolicy()
+            .SetCspUris(
+            [
+                ContentSecurityPolicyHelpers.CreateSelfDirective(),
+                new ContentSecurityPolicyElement
+                {
+                    CommandType = CspCommandType.Directive,
+                    DirectiveOrUri = "unsafe-inline"
+                }
+            ], CspUriType.Script)
+            .SetCspUris([ContentSecurityPolicyHelpers.CreateSelfDirective()], CspUriType.Object)
+            .Build();
 
     // HttpsConfig (HttpsConfig.cs) owns Strict-Transport-Security — UseHsts() deliberately not called here
     // to avoid emitting it twice.
-    private static SecureHeadersMiddlewareConfiguration BaseConfig() =>
-        SecureHeadersMiddlewareBuilder
-            .CreateBuilder()
+    private static SecureHeadersBuilder BaseConfig() =>
+        new SecureHeadersBuilder()
             .UseXFrameOptions()
             .UseContentTypeOptions()
             .UsePermittedCrossDomainPolicies()

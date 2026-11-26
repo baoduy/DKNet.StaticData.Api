@@ -43,16 +43,16 @@ public sealed class FilesBeforeGroupsTests : IAsyncLifetime
         details.GetProperty("version").GetInt32().ShouldBe(1);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (Directory.Exists(_blobRoot))
         {
             Directory.Delete(_blobRoot, recursive: true);
         }
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>Migrates the empty database to <paramref name="migration"/> with the service's own context and migrations.</summary>
