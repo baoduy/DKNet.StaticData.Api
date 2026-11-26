@@ -38,10 +38,12 @@
 ### Content safety
 
 - The content type comes from the file extension, never from the caller.
+- An upload's first bytes must match its extension. A `.docx` or `.xlsx` must also list the Office parts (03-integration, Content rules; ADR-0022).
+- Only the 9 types with a content rule can be allowed. Executables, `.html`, `.svg`, `.zip`, text types and video can never be allowed by a settings change.
 - Downloads always answer with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`. A browser never renders a stored file inline from this service.
-- `.html` and `.htm` are not on the default allow-list.
 - File names are cut to their last path segment. The storage key never holds the file name or the owner, so no caller text reaches a blob path.
-- Malware scanning and encryption at rest are the storage provider's (requester decision 11).
+- Malware scanning and encryption at rest are the storage provider's (requester decision 11). The content check is not a malware scan.
+- Files stored before the content check are not checked again (ADR-0022).
 
 ### Personal data
 
@@ -80,7 +82,7 @@ Structured logs. Every entry carries the trace id and the caller id. None carrie
 | File uploaded | Information | file id, size, content type, caller id |
 | File downloaded | Information | file id, size, caller id |
 | File deleted | Information | file id, caller id |
-| Upload refused (extension, size, form) | Information | reason, caller id |
+| Upload refused (extension, size, form, content) | Information | reason, caller id. The reason is `content` when the file's bytes fail its content rule. |
 | Bytes missing for an existing file | Error | file id, storage key |
 | Orphaned bytes after a failed delete | Warning | file id, storage key |
 | Blob storage or database unreachable | Error | the dependency, the exception type |
@@ -135,6 +137,9 @@ Integration tests run against real infrastructure (Policy 02):
 | `DELETE /v1/ui-settings/all` removes every setting and setting group of 1 owner, leaves other owners and all files, and answers 409 with no change when a setting is saved into a group during the erase | Both databases | All or nothing needs a real transaction and foreign key (ADR-0021) |
 | A list with no `fromDate` or `toDate` returns a record created and last updated more than 3 months ago; Flow 5 finds and updates that setting | Both databases, audit times set in the past | DKNet's default 3-month window must stay off |
 | Upload, download, delete and the size and extension checks, at 50,000,000 bytes and 1 byte more | Local blob provider on a temporary folder | Real streaming and hashing |
+| Content check: each of the 9 types with valid first bytes is stored; each with wrong first bytes, a file shorter than its rule, a plain ZIP renamed to `.docx`, a `.docx` without `word/document.xml` and a `.xlsx` without `xl/workbook.xml` answer 400 with the extension refusal's message, log the reason `content`, and store no bytes and no row | Local blob provider on a temporary folder, both databases | The check must run on the real buffered upload, before any byte is stored |
+| The host refuses to start, naming the extension, when `Files:AllowedExtensions` lists `.mp4`, `.zip` or `.txt`; it starts with a subset of the 9 types | Host start with test settings | The start-up rule guards every deployment |
+| A file stored with `.txt` before the content check keeps its metadata, download and delete | Both databases, a seeded `.txt` row and its bytes | Stored files are never checked again |
 | Idempotent upload: replay after 201 (same body, no `Location` or `ETag`), 409 while the first runs, 1 file stored | The database's idempotency store, both databases | Real reservation and replay |
 | The sweep deletes idempotency rows whose `ExpiresAt` has passed and keeps the rest | The database's idempotency store, both databases, rows with past and future `ExpiresAt` | The package never deletes rows |
 | File name with non-ASCII characters in `Content-Disposition` | Local provider | Real headers |

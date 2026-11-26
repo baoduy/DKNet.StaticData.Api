@@ -20,7 +20,7 @@
 ## Responsibilities
 
 - Keep file metadata in its database and file bytes in blob storage.
-- Accept a file only when its extension is on the allow-list and its size is at most 50,000,000 bytes.
+- Accept a file only when its extension is on the allow-list, its bytes pass that extension's content rule, and its size is at most 50,000,000 bytes (ADR-0022).
 - Compute and keep the SHA-256 checksum and the size of each file.
 - Stream file bytes back on request, for every storage provider.
 - Keep file groups, and link each file to at most one group of the same owner.
@@ -53,6 +53,8 @@
 | Reads, checks or upgrades the content of a UI setting value | The UI app, using `SettingType` and `SchemaVersion` |
 | Keeps a record of each download | No one; a log entry only (ADR-0009) |
 | Renders, converts or previews files | No one in version 1 |
+| Decodes images or checks image sizes | No one; the content check reads only a file's first bytes (ADR-0022) |
+| Checks files already stored | No one; only new uploads are checked (ADR-0022) |
 | Implements blob storage access | DKNet.Svc.BlobStorage packages in the DKNet repo |
 | Implements the owner filter | DKNet.EfCore.DataAuthorization in the DKNet repo |
 | Implements idempotency | DKNet.AspCore.Idempotency and its Postgres and SQL Server stores in the DKNet repo |

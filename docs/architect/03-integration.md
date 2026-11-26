@@ -140,7 +140,25 @@ Checks, in order. The first failure answers and nothing is stored:
 6. Exactly 1 `file` part and no unknown part — 400.
 7. File name: the text rules apply; 1 to 255 characters after the path is removed, no control characters, extension on the allow-list — 400.
 8. Size: 0 bytes answers 400. Over 50,000,000 bytes answers 413.
-9. `groupId`, when sent, names a file group of this owner — otherwise 404.
+9. Content: the bytes pass the content rule of the file name's extension (Content rules, below; ADR-0022) — 400 with "The file type is not allowed.", the same answer as an extension refusal.
+10. `groupId`, when sent, names a file group of this owner — otherwise 404.
+
+Content rules (check 9). The extension is matched ignoring case. Bytes are shown in hex:
+
+| Extension | The file is accepted only when |
+|---|---|
+| `.pdf` | It starts with `%PDF-` (`25 50 44 46 2D`). |
+| `.png` | It starts with `89 50 4E 47 0D 0A 1A 0A`. |
+| `.jpg`, `.jpeg` | It starts with `FF D8 FF`. |
+| `.gif` | It starts with `GIF87a` or `GIF89a`. |
+| `.doc`, `.xls` | It starts with `D0 CF 11 E0 A1 B1 1A E1`. |
+| `.docx` | It starts with the ZIP header `50 4B 03 04`, and its list of parts holds `[Content_Types].xml` and `word/document.xml`. |
+| `.xlsx` | It starts with the ZIP header `50 4B 03 04`, and its list of parts holds `[Content_Types].xml` and `xl/workbook.xml`. |
+
+- A file shorter than its rule's first bytes is refused.
+- For `.docx` and `.xlsx`, the service reads only the archive's list of parts. It never extracts or decompresses a part. An archive whose list of parts cannot be read is refused.
+- A part name is matched ignoring case.
+- No other extension has a content rule, so no other extension can be allowed (04-data, FileSettings).
 
 Answer: 201 with `Location: /v1/files/{fileId}?owner=<owner>`, `ETag` and the file metadata.
 
@@ -293,7 +311,7 @@ Every flow starts with the token check (401) and the role check (403) from the r
 ### Flow 1 — Upload a file
 
 1. The caller posts the form to `POST /v1/files?owner=<owner>` with a token and an idempotency key.
-2. The service runs checks 1 to 9 (Exposed API). A failure answers and stores nothing.
+2. The service runs checks 1 to 10 (Exposed API), the content check included. A failure answers and stores nothing.
 3. The service makes a new `FileId` and the storage key `files/<FileId><extension>`.
 4. It reads the buffered upload once to compute the SHA-256 checksum and the size, then streams the bytes to blob storage.
 5. It inserts the `StoredFile` row with the owner, the checksum, the size and `Version` 1.
@@ -305,7 +323,7 @@ Failure paths:
 - The insert fails in step 5: the service deletes the stored bytes, best effort, and answers 503 or 500. If that delete fails too, it logs a warning with the file id and the storage key. Those bytes are orphaned and no caller can reach them.
 - The caller retries with the same key: while the first upload runs, 409; once it answered 201, the first status and body again, with no `Location` or `ETag`. No second file is stored.
 
-![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the token, the write role, the owner, the extension and the size, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
+![The caller posts a file with a bearer token, an owner and an idempotency key; the service checks the token, the write role, the owner, the extension, the size and the file's first bytes, hashes the buffered bytes, streams them to blob storage under a new storage key, inserts the metadata row, and answers 201; when the insert fails it deletes the stored bytes and answers with an error.](diagrams/upload-file.svg)
 
 ### Flow 2 — Download a file
 

@@ -1,6 +1,6 @@
 # ADR-0007: Accept only file extensions on a configured allow-list
 
-- **Status:** Accepted — proposed answer to open question 1; the owner approves it with the design PR.
+- **Status:** Superseded by ADR-0022
 - **Context:**
   - The requester left open: a configurable allow-list, or every type accepted.
   - The service does no malware scanning (requester decision 11).

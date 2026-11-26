@@ -1,0 +1,38 @@
+# ADR-0022: Check each file's first bytes; accept only the 9 types with a content rule
+
+- **Status:** Accepted — the requester's decisions on DRK-2612, rounds 1 and 2. Supersedes ADR-0007.
+- **Context:**
+  - ADR-0007 accepted a file on its extension alone. Any bytes could be stored under an allowed extension.
+  - The requester asked that the upload stop trusting the extension and check the file's first bytes (DRK-2612).
+  - The service still does no malware scanning. That stays with the storage provider.
+  - `.docx` and `.xlsx` are ZIP archives. Their first bytes alone do not tell them from a plain ZIP.
+  - Text types (`.txt`, `.csv`, `.json`, `.xml`) and many others have no fixed first bytes.
+  - Uploads are buffered before they are stored (Flow 1), so the service can read the start and the end of the file before it stores a byte.
+- **Decision:**
+  - The service knows a content rule for 9 types only: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.doc`, `.docx`, `.xls`, `.xlsx` (03-integration, Content rules).
+  - An upload is accepted only when its extension is on `Files:AllowedExtensions` and its bytes pass that extension's content rule.
+  - The default of `Files:AllowedExtensions` is the 9 types. The match still ignores case.
+  - An operator may list fewer of the 9 types, never another one. Any other listed extension stops the host at start, and the start error names it. Video types, `.zip`, the text types, `.svg` and `.html` are all refused this way.
+  - An empty list still stops the host at start.
+  - For `.docx` and `.xlsx`, the service reads the archive's list of parts and looks for the Office parts. It never extracts or decompresses a part.
+  - A content refusal answers 400 with the extension refusal's message, "The file type is not allowed.". A caller cannot tell which check refused the file.
+  - The content check runs after the size check and before the file group check. Nothing is stored for a refused file.
+  - The content type still comes from the extension, never from the caller or the bytes.
+  - Files stored before this revision are not checked again. Their metadata, download and delete keep working, even when their extension is no longer allowed.
+- **Alternatives:**
+  - *Keep the extension check alone (ADR-0007).* Rejected by the requester: any bytes could be stored as a `.pdf`.
+  - *Check content for the 9 types and accept other listed types on their extension alone.* Rejected by the requester (round 2, question 3 B): every unchecked type would stay open, video included.
+  - *Start the host and refuse each upload of a type with no content rule.* Rejected by the requester (round 2, question 3 C): a wrong setting would only show up as failed uploads.
+  - *Accept a `.docx` or `.xlsx` on the ZIP header alone.* Rejected by the requester (round 2, question 4): a plain ZIP renamed to `.docx` would pass.
+  - *Find the Office main part through its content type in `[Content_Types].xml` or `_rels/.rels`.* Not taken: it means reading a part's XML, and the requester ruled out extracting anything. The part list holds the names only.
+  - *Accept a PDF header anywhere in the first 1,024 bytes, as some readers do.* Not taken: the requester's rule is "starts with `%PDF-`".
+  - *Detect the type from the bytes and ignore the extension.* Rejected: the content type and the storage key come from the extension (ADR-0003), and a mismatch must be refused, not renamed.
+  - *A separate message for a content refusal.* Rejected by the requester (round 1, answer 5): it would tell a caller which check its file failed.
+- **Consequences:**
+  - Easier: a stored `.pdf`, image or Office file starts with the bytes its type needs; a renamed executable or plain ZIP is refused.
+  - Easier: `.zip`, the text types and video can never be allowed by a settings change.
+  - Harder: a new type needs a design revision with its content rule, not a settings change.
+  - Harder: a deployment whose `Files:AllowedExtensions` lists a type outside the 9 does not start until the operator removes it.
+  - Limit: `.doc` and `.xls` share 1 header, so a `.doc` renamed to `.xls` passes. `.jpg` and `.jpeg` share 1 rule.
+  - Limit: the check proves the first bytes and, for `.docx` and `.xlsx`, the part names. It does not decode the file or prove it opens.
+  - Files uploaded under ADR-0007 may keep an extension that is no longer allowed. ADR-0003's "always on the allow-list" holds at upload time only.

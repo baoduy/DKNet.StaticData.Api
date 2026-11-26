@@ -15,7 +15,8 @@
 | Stored bytes | The content of a file in blob storage. They never change after upload. | The file's metadata. |
 | Storage key | The name of the bytes in blob storage: `files/<file id><extension>`. Internal; never returned to a caller. | The file name. |
 | File name | The name the caller gave the file at upload, trimmed, for example `passport.pdf`. It is returned on download. | The storage key. |
-| Allow-list | The file extensions this deployment accepts, set by the operator (ADR-0007). | The content type, which the service derives from the extension. |
+| Allow-list | The file extensions this deployment accepts, set by the operator. Only types with a content rule can be on it (ADR-0022). | The content type, which the service derives from the extension. |
+| Content rule | What a file's bytes must hold for its extension: its first bytes, and for `.docx` and `.xlsx` its Office parts (ADR-0022). | The content type. The rule checks the bytes; the content type only names the type. |
 | Checksum | The SHA-256 hash of the stored bytes, as 64 lowercase hex characters. | The `Version` of the record. |
 | File group | A named set of files of one owner, for example one customer onboarding pack. | A setting group. |
 | Purpose | Free text that says what a file group is for, for example `customer-onboarding`. | The group's name. |
@@ -48,7 +49,7 @@ These invariants hold for every aggregate:
 
 - **Root:** `StoredFile`, identified by `FileId`.
 - **Value objects inside:**
-  - `FileName` — 1 to 255 characters, trimmed, the last path segment only, no control characters. Its extension is on the allow-list.
+  - `FileName` — 1 to 255 characters, trimmed, the last path segment only, no control characters. Its extension was on the allow-list at upload.
   - `ContentType` — derived from the file name's extension with DKNet's extension map. Never taken from the caller.
   - `Checksum` — SHA-256 of the stored bytes, 64 lowercase hex characters.
   - `StorageKey` — `files/<FileId><extension>`, the extension in lowercase.
@@ -57,7 +58,8 @@ These invariants hold for every aggregate:
   - `SizeBytes` is 1 to 50,000,000.
   - `SizeBytes` and `Checksum` describe the stored bytes exactly.
   - The stored bytes, the file name, the content type and the storage key never change after create.
-  - The storage key always ends in an allowed extension and never holds the owner or the file name.
+  - The storage key ends in the extension that was allowed at upload, and never holds the owner or the file name.
+  - A file uploaded under ADR-0022 passed its extension's content rule before its bytes were stored. Files stored earlier are not checked again.
   - A `StoredFile` exists only after its bytes are stored.
   - When `GroupId` is set, it names a `FileGroup` of the same owner.
   - Only `GroupId` can change after create.
