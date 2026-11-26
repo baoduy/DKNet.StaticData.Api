@@ -40,13 +40,11 @@ public sealed class AuthOnFixedTenantApiFixture : TestApiFactoryBase, IAsyncLife
         services.AddScoped<IDataOwnerProvider>(_ => new FixedTenantDataOwnerProvider(TenantKey));
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _ = CreateClient();
         await ResetDatabaseAsync();
     }
-
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 
     protected override void Dispose(bool disposing)
     {

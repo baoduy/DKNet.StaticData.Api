@@ -2,6 +2,11 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
+        <!-- xunit.v3 test projects are executables. -->
+        <OutputType>Exe</OutputType>
+        <!-- Keep the VSTest runner (xunit.runner.visualstudio): .NET 10's dotnet test refuses a Microsoft Testing
+             Platform project in VSTest mode, and xunit.v3 marks the project as one unless told otherwise. -->
+        <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
         <LangVersion>default</LangVersion>
         <!-- Disable code analysis for test entities -->
         <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
@@ -29,7 +34,7 @@
         <PackageReference Include="Moq"/>
         <PackageReference Include="Shouldly"/>
         <PackageReference Include="Testcontainers.PostgreSql"/>
-        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.v3"/>
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

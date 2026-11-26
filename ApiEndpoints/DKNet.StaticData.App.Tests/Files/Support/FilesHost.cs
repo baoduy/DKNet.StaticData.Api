@@ -52,9 +52,9 @@ public sealed class FilesHost : IAsyncLifetime
     public Task<FilesApi> ReplicaOfAsync(FilesApi api) =>
         StartAsync(api.Server, api.Host.ConnectionString, api.Host.BlobRoot, timeProvider: null);
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         foreach (var host in _hosts)
         {

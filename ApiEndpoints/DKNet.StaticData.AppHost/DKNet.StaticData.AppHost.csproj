@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.2">
+<Project Sdk="Aspire.AppHost.Sdk/17.0.0">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -16,8 +16,10 @@
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <!-- ASPIRE010: dashboard/DCP deprecation warning, understood and deliberately deferred —
              AspireUseCliBundle requires the Aspire CLI on PATH, which breaks a bare `dotnet build`
-             on a clean scaffolded machine. NoWarn keeps the template buildable everywhere. -->
-        <NoWarn>$(NoWarn);CS1591;SA1600;ASPIRE010</NoWarn>
+             on a clean scaffolded machine. NoWarn keeps the template buildable everywhere.
+             ASPIRE012: Aspire 17 marks Aspire.AppHost.Sdk obsolete; moving to Microsoft.NET.Sdk needs the
+             Aspire.Hosting.AppHost and Aspire.Hosting.Dotnet packages, which DRK-2618 does not add. -->
+        <NoWarn>$(NoWarn);CS1591;SA1600;ASPIRE010;ASPIRE012</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

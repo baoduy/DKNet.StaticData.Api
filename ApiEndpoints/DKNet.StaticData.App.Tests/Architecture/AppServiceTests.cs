@@ -3,7 +3,6 @@ using NetArchTest.Rules;
 using DKNet.StaticData.AppServices;
 using DKNet.StaticData.Domains.Share;
 using SlimMessageBus;
-using Xunit.Abstractions;
 
 namespace DKNet.StaticData.App.Tests.Architecture;
 
